@@ -22,15 +22,13 @@ graph TB
     end
     
     subgraph "External Systems"
-        CAM[Cámaras IP<br/>RTSP Streams]
+        CAM[Cámaras Streams]
     end
 
     FE --> API
     FE --> AI
     API --> DB
-    AI --> REDIS
     AI --> CAM
-    MOBILE --> API
     API --> AI
 ```
 
