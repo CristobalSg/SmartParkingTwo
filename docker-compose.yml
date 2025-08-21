@@ -1,0 +1,175 @@
+version: '3.8'
+
+services:
+  # =============================================
+  # Base de Datos PostgreSQL
+  # =============================================
+  database:
+    build: ./database
+    container_name: smart-parking-db
+    environment:
+      - POSTGRES_DB=smart_parking
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=parking123
+      - TZ=America/Santiago
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d/init
+      - ./database/seeds:/docker-entrypoint-initdb.d/seeds
+    networks:
+      - smart-parking-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # =============================================
+  # Backend API - Node.js
+  # =============================================
+  backend:
+    build: ./backend
+    container_name: smart-parking-backend
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DB_NAME=smart_parking
+      - DB_USER=postgres
+      - DB_PASSWORD=parking123
+      - JWT_SECRET=your-jwt-secret-key-change-in-production
+      - JWT_EXPIRES_IN=7d
+      - PYTHON_MODELS_API_URL=http://python-models:8000
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX_REQUESTS=100
+    ports:
+      - "3001:3001"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - smart-parking-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # =============================================
+  # Frontend React - TypeScript
+  # =============================================
+  frontend:
+    build: ./frontend
+    container_name: smart-parking-frontend
+    environment:
+      - REACT_APP_API_URL=http://localhost:3001/api
+      - REACT_APP_MODELS_API_URL=http://localhost:8000/api
+      - REACT_APP_WEBSOCKET_URL=ws://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - smart-parking-network
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true
+
+  # =============================================
+  # Python Models API - IA
+  # =============================================
+  python-models:
+    build: ./python-models
+    container_name: smart-parking-ai
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - DEBUG=true
+      - YOLO_CONFIDENCE_THRESHOLD=0.5
+      - OCR_CONFIDENCE_THRESHOLD=0.7
+      - BACKEND_API_URL=http://backend:3001/api
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=INFO
+    ports:
+      - "8000:8000"
+    networks:
+      - smart-parking-network
+    volumes:
+      - ./python-models:/app
+      - ai_models:/app/models
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # =============================================
+  # Redis Cache para IA
+  # =============================================
+  redis:
+    image: redis:7-alpine
+    container_name: smart-parking-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - smart-parking-network
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # =============================================
+  # Nginx Reverse Proxy (Opcional para producción)
+  # =============================================
+  nginx:
+    image: nginx:alpine
+    container_name: smart-parking-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+      - python-models
+    networks:
+      - smart-parking-network
+    profiles:
+      - production
+
+# =============================================
+# Volúmenes Persistentes
+# =============================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  ai_models:
+    driver: local
+
+# =============================================
+# Red Interna
+# =============================================
+networks:
+  smart-parking-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
