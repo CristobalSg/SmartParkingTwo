@@ -19,12 +19,10 @@ graph TB
     
     subgraph "Data Layer"  
         DB[(PostgreSQL<br/>Puerto: 5432)]
-        REDIS[(Redis Cache<br/>Puerto: 6379)]
     end
     
     subgraph "External Systems"
         CAM[Cámaras IP<br/>RTSP Streams]
-        MOBILE[Dispositivos Móviles]
     end
 
     FE --> API
@@ -120,7 +118,7 @@ Una vez que todos los contenedores estén ejecutándose:
 
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:3001/api
-- **Python AI API**: http://localhost:8000/docs (Swagger UI)
+- **Python AI API**: http://localhost:8000/
 - **Base de Datos**: localhost:5432
 
 ### 🔧 Desarrollo Local
@@ -211,12 +209,9 @@ JWT_SECRET=your-super-secret-jwt-key
 API_PORT=3001
 
 # Python Models
-YOLO_MODEL_PATH=/app/models/yolov8n.pt
-OCR_CONFIDENCE_THRESHOLD=0.7
+MODEL_PATH=/app/models/model.pt
 AI_API_PORT=8000
 
-# Redis
-REDIS_URL=redis://localhost:6379
 
 # Frontend  
 REACT_APP_API_URL=http://localhost:3001/api
@@ -296,18 +291,11 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 ### Medidas Implementadas
 - ✅ **JWT Authentication**: Tokens seguros para API
-- ✅ **HTTPS**: Certificados SSL/TLS
-- ✅ **Rate Limiting**: Prevención de ataques DDoS  
 - ✅ **Input Validation**: Validación de datos de entrada
 - ✅ **SQL Injection Prevention**: Queries parametrizadas
 - ✅ **CORS Configuration**: Control de acceso cross-origin
 - ✅ **Environment Variables**: Secrets fuera del código
 
-### Auditoría y Compliance
-- **Logs de Auditoría**: Registro de todas las acciones
-- **Backup Automatizado**: Respaldo diario de datos  
-- **Recovery Plan**: Procedimientos de recuperación
-- **Privacy by Design**: Cumplimiento GDPR/LOPD
 
 ## 🤝 Contribución y Desarrollo
 
@@ -322,9 +310,7 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ### Estándares de Código
 - **Frontend**: ESLint + Prettier
 - **Backend**: ESLint + Prettier  
-- **Python**: Black + Isort + Flake8
 - **Commits**: Conventional Commits
-- **Testing**: Cobertura mínima 80%
 
 ## 📚 Documentación Adicional
 
@@ -339,12 +325,6 @@ Cada servicio contiene documentación específica en su directorio:
 - **Backend API**: http://localhost:3001/api/docs
 - **AI Models API**: http://localhost:8000/docs
 
-## 📞 Soporte y Contacto
-
-- **Issues**: [GitHub Issues](https://github.com/CristobalSg/SmartParkingTwo/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/CristobalSg/SmartParkingTwo/discussions)
-- **Wiki**: [Project Wiki](https://github.com/CristobalSg/SmartParkingTwo/wiki)
-
 ## 📄 Licencia
 
 Este proyecto está licenciado bajo la [MIT License](LICENSE).
@@ -352,5 +332,3 @@ Este proyecto está licenciado bajo la [MIT License](LICENSE).
 ---
 
 **Desarrollado con ❤️ para la comunidad universitaria**
-
-*¿Necesitas ayuda para comenzar? Revisa la [Guía de Inicio Rápido](./docs/getting-started.md) o contacta al equipo de desarrollo.*
