@@ -9,8 +9,6 @@ API RESTful del sistema de parking universitario, desarrollada con Node.js, Type
 - **Express.js** - Framework web
 - **PostgreSQL** - Base de datos relacional
 - **JWT** - Autenticación basada en tokens
-- **Joi** - Validación de esquemas
-- **Helmet** - Seguridad HTTP
 - **Bcrypt** - Hash de contraseñas
 
 ## 📁 Estructura del Proyecto
