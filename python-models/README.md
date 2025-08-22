@@ -364,7 +364,6 @@ services:
 - **HPA**: Auto-scaling basado en carga
 - **GPU Nodes**: Nodos especializados con GPU
 - **Service Mesh**: Comunicación entre servicios
-
 ---
 
 **Nota**: Este servicio requiere recursos computacionales significativos. Para desarrollo, usar modelos pequeños (nano/small). Para producción, considerar GPU y modelos más grandes.
