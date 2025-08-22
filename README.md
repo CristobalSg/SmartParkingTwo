@@ -50,7 +50,7 @@ graph TB
 - **Puerto**: 8000
 - **Tecnología**: FastAPI, OpenCV, YOLO, EasyOCR, PyTorch  
 - **Funcionalidad**: Detección de vehículos, reconocimiento de patentes, análisis IA
-- **Contenedor**: Docker con soporte GPU opcional
+- **Contenedor**: Docker 
 
 ### 🗄️ Database (PostgreSQL)
 - **Puerto**: 5432
