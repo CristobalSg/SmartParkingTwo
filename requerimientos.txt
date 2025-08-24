@@ -1,0 +1,4 @@
+- Poder visualizar espacios reservados 
+- Validacion por nombre de usuario
+- Notificación cuando la reserva está por vencer
+- Validacion de espacios reservados
