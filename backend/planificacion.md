@@ -35,7 +35,7 @@ src/
 │       └── dtos/                  # DTOs para casos de uso
 ├── infrastructure/                 # Capa externa
 │   ├── database/
-│   │   ├── entities/              # Entidades de TypeORM
+│   │   ├── entities/              # Entidades de PrismaORM
 │   │   ├── repositories/          # Implementaciones de repositorios
 │   │   └── migrations/
 │   ├── external-services/         # APIs externas, email, etc.
