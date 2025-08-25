@@ -1,0 +1,71 @@
+{
+    "name": "Smart Parking API Tests",
+    "description": "Tests para el API de Smart Parking",
+    "baseUrl": "http://localhost:3000",
+    "requests": [
+        {
+            "name": "Create User",
+            "method": "POST",
+            "url": "/api/users",
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "body": {
+                "email": "juan.perez@example.com",
+                "name": "Juan Pérez",
+                "emailVerified": false
+            }
+        },
+        {
+            "name": "Get All Users",
+            "method": "GET",
+            "url": "/api/users"
+        },
+        {
+            "name": "Get User by ID",
+            "method": "GET",
+            "url": "/api/users/{{userId}}",
+            "description": "Reemplaza {{userId}} con un ID real"
+        },
+        {
+            "name": "Update User",
+            "method": "PUT",
+            "url": "/api/users/{{userId}}",
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "body": {
+                "name": "Juan Carlos Pérez",
+                "emailVerified": true
+            }
+        },
+        {
+            "name": "Delete User",
+            "method": "DELETE",
+            "url": "/api/users/{{userId}}"
+        },
+        {
+            "name": "Test Validation - Invalid Email",
+            "method": "POST",
+            "url": "/api/users",
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "body": {
+                "email": "email-invalido",
+                "name": "Test User"
+            }
+        },
+        {
+            "name": "Test Validation - Missing Name",
+            "method": "POST",
+            "url": "/api/users",
+            "headers": {
+                "Content-Type": "application/json"
+            },
+            "body": {
+                "email": "test@example.com"
+            }
+        }
+    ]
+}
