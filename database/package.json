@@ -1,0 +1,35 @@
+{
+  "name": "smart-parking-database",
+  "version": "1.0.0",
+  "description": "Base de datos para Smart Parking System",
+  "main": "index.js",
+  "scripts": {
+    "setup": "npm install && npx prisma generate",
+    "db:generate": "npx prisma generate",
+    "db:push": "npx prisma db push",
+    "db:migrate": "npx prisma migrate dev",
+    "db:seed": "npx tsx prisma/seed.ts",
+    "db:reset": "npx prisma migrate reset --force && npm run db:seed",
+    "db:studio": "npx prisma studio",
+    "db:format": "npx prisma format",
+    "db:validate": "npx prisma validate",
+    "dev": "npm run db:push && npm run db:seed && npm run db:studio"
+  },
+  "keywords": ["prisma", "postgresql", "database", "smart-parking"],
+  "author": "Smart Parking Team",
+  "license": "MIT",
+  "dependencies": {
+    "@prisma/client": "^5.7.0",
+    "bcryptjs": "^2.4.3"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.10.0",
+    "prisma": "^5.7.0",
+    "tsx": "^4.6.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

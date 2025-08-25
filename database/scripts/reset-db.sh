@@ -8,10 +8,10 @@ echo
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "💥 Reseteando base de datos..."
-    pnpx prisma migrate reset --force
+    npx prisma migrate reset --force
     
     echo "🌱 Ejecutando semilla..."
-    pnpm run db:seed
+    npm run db:seed
     
     echo "✅ Base de datos reseteada y poblada exitosamente!"
 else
