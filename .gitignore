@@ -212,7 +212,6 @@ data/raw/
 data/processed/
 datasets/
 *.csv
-*.json
 *.xml
 
 # AI generated content

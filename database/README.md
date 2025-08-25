@@ -6,7 +6,7 @@ Este módulo contiene toda la configuración y gestión de la base de datos para
 
 1. **Instalar dependencias:**
    ```bash
-   pnpm run setup
+   npm run setup
    ```
 
 2. **Configurar variables de entorno:**
@@ -17,19 +17,19 @@ Este módulo contiene toda la configuración y gestión de la base de datos para
 
 3. **Crear y poblar la base de datos:**
    ```bash
-   pnpm run db:push
-   pnpm run db:seed
+   npm run db:push
+   npm run db:seed
    ```
 
 ## 📋 Comandos Disponibles
 
-- `pnpm run setup` - Configuración inicial completa
-- `pnpm run db:generate` - Genera el cliente de Prisma
-- `pnpm run db:push` - Sincroniza el esquema con la base de datos
-- `pnpm run db:seed` - Puebla la base de datos con datos de prueba
-- `pnpm run db:reset` - Resetea y repuebla la base de datos
-- `pnpm run db:studio` - Abre Prisma Studio (GUI para la base de datos)
-- `pnpm run dev` - Comando completo para desarrollo
+- `npm run setup` - Configuración inicial completa
+- `npm run db:generate` - Genera el cliente de Prisma
+- `npm run db:push` - Sincroniza el esquema con la base de datos
+- `npm run db:seed` - Puebla la base de datos con datos de prueba
+- `npm run db:reset` - Resetea y repuebla la base de datos
+- `npm run db:studio` - Abre Prisma Studio (GUI para la base de datos)
+- `npm run dev` - Comando completo para desarrollo
 
 ## 🔐 Credenciales de Prueba
 
@@ -49,21 +49,7 @@ Este módulo contiene toda la configuración y gestión de la base de datos para
 
 Si encuentras errores, ejecuta:
 ```bash
-pnpm run db:reset
+npm run db:reset
 ```
 
 Esto reseteará completamente la base de datos con datos frescos.
-
-## 📦 Usando pnpm
-
-Este proyecto está configurado para usar **pnpm** como gestor de paquetes. Asegúrate de tener pnpm instalado:
-
-```bash
-npm install -g pnpm
-```
-
-### Ventajas de pnpm:
-- ⚡ Instalaciones más rápidas
-- 💾 Menos espacio en disco (symlinks)
-- 🔒 Mejor gestión de dependencias
-- 🚀 Mejor rendimiento general
