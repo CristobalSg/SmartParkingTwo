@@ -5,7 +5,7 @@ services:
   # Base de Datos PostgreSQL
   # =============================================
   database:
-    build: ./database
+    build: ./backend/src/infrastructure/database
     container_name: smart-parking-db
     environment:
       - POSTGRES_DB=smart_parking
@@ -16,8 +16,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/init:/docker-entrypoint-initdb.d/init
-      - ./database/seeds:/docker-entrypoint-initdb.d/seeds
+      - ./backend/src/infrastructure/database/init:/docker-entrypoint-initdb.d/init
+      - ./backend/src/infrastructure/database/seeds:/docker-entrypoint-initdb.d/seeds
     networks:
       - smart-parking-network
     healthcheck:
