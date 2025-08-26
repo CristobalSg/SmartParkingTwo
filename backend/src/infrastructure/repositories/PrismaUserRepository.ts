@@ -5,7 +5,7 @@ import { User } from '../../core/domain/entities/User';
 
 @Injectable()
 export class PrismaUserRepository implements UserRepository {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     async create(user: User): Promise<User> {
         const createdUser = await this.prisma.user.create({
@@ -33,7 +33,7 @@ export class PrismaUserRepository implements UserRepository {
 
     async findAll(): Promise<User[]> {
         const users = await this.prisma.user.findMany();
-        
+
         return users.map(user => new User(
             user.id,
             user.email,

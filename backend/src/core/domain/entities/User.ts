@@ -7,7 +7,6 @@ export class User {
         readonly verificationToken: string | null,
         readonly createdAt: Date,
         readonly updatedAt: Date,
-
     ) { }
 }
 
