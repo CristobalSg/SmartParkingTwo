@@ -22,12 +22,26 @@
         "resolveJsonModule": true,
         "esModuleInterop": true,
         "paths": {
-            "@/*": ["./src/*"],
-            "@core/*": ["./src/core/*"],
-            "@infrastructure/*": ["./src/infrastructure/*"],
-            "@presentation/*": ["./src/presentation/*"]
+            "@/*": [
+                "./src/*"
+            ],
+            "@core/*": [
+                "./src/core/*"
+            ],
+            "@infrastructure/*": [
+                "./src/infrastructure/*"
+            ],
+            "@presentation/*": [
+                "./src/presentation/*"
+            ]
         }
     },
-    "include": ["src/**/*"],
-    "exclude": ["node_modules", "dist", "test"]
+    "include": [
+        "src/**/*"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "test"
+    ]
 }

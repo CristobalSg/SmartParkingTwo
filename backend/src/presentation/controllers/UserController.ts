@@ -1,18 +1,44 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, HttpStatus, HttpException } from '@nestjs/common';
-import { UserService } from '../../core/application/services/UserService';
-import { CreateUserDto, UpdateUserDto } from '../../core/application/dtos/CreateUserDto';
+import { Controller, Get, Post, Put, Delete, Body, Param, HttpStatus, HttpException, Inject } from '@nestjs/common';
+import { UserApplicationService } from '../../application/services/UserApplicationService';
+import { CreateUserDto, UpdateUserDto, UserResponseDto } from '../dtos/UserDto';
+import { CreateUserInput, UpdateUserInput } from '../../application/interfaces/UserInterfaces';
+
+export const USER_APPLICATION_SERVICE_TOKEN = 'USER_APPLICATION_SERVICE_TOKEN';
 
 @Controller('api/users')
 export class UserController {
-    constructor(private readonly userService: UserService) {}
+    constructor(
+        @Inject(USER_APPLICATION_SERVICE_TOKEN)
+        private readonly userApplicationService: UserApplicationService
+    ) { }
 
     @Post()
     async createUser(@Body() createUserDto: CreateUserDto) {
         try {
-            const user = await this.userService.createUser(createUserDto);
+            // Convert DTO to Application Input
+            const input: CreateUserInput = {
+                email: createUserDto.email,
+                name: createUserDto.name,
+                emailVerified: createUserDto.emailVerified,
+                verificationToken: createUserDto.verificationToken,
+            };
+
+            const user = await this.userApplicationService.createUser(input);
+
+            // Convert to Response DTO
+            const response: UserResponseDto = {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                emailVerified: user.emailVerified,
+                verificationToken: user.verificationToken,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt,
+            };
+
             return {
                 status: 'success',
-                data: user,
+                data: response,
                 message: 'User created successfully'
             };
         } catch (error) {
@@ -30,10 +56,22 @@ export class UserController {
     @Get()
     async getAllUsers() {
         try {
-            const users = await this.userService.getAllUsers();
+            const users = await this.userApplicationService.getAllUsers();
+
+            // Convert to Response DTOs
+            const responses: UserResponseDto[] = users.map(user => ({
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                emailVerified: user.emailVerified,
+                verificationToken: user.verificationToken,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt,
+            }));
+
             return {
                 status: 'success',
-                data: users,
+                data: responses,
                 message: 'Users retrieved successfully'
             };
         } catch (error) {
@@ -51,7 +89,8 @@ export class UserController {
     @Get(':id')
     async getUserById(@Param('id') id: string) {
         try {
-            const user = await this.userService.getUserById(id);
+            const user = await this.userApplicationService.getUserById(id);
+
             if (!user) {
                 throw new HttpException(
                     {
@@ -61,9 +100,21 @@ export class UserController {
                     HttpStatus.NOT_FOUND
                 );
             }
+
+            // Convert to Response DTO
+            const response: UserResponseDto = {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                emailVerified: user.emailVerified,
+                verificationToken: user.verificationToken,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt,
+            };
+
             return {
                 status: 'success',
-                data: user,
+                data: response,
                 message: 'User retrieved successfully'
             };
         } catch (error) {
@@ -84,7 +135,16 @@ export class UserController {
     @Put(':id')
     async updateUser(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
         try {
-            const user = await this.userService.updateUser(id, updateUserDto);
+            // Convert DTO to Application Input
+            const input: UpdateUserInput = {
+                email: updateUserDto.email,
+                name: updateUserDto.name,
+                emailVerified: updateUserDto.emailVerified,
+                verificationToken: updateUserDto.verificationToken,
+            };
+
+            const user = await this.userApplicationService.updateUser(id, input);
+
             if (!user) {
                 throw new HttpException(
                     {
@@ -94,9 +154,21 @@ export class UserController {
                     HttpStatus.NOT_FOUND
                 );
             }
+
+            // Convert to Response DTO
+            const response: UserResponseDto = {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                emailVerified: user.emailVerified,
+                verificationToken: user.verificationToken,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt,
+            };
+
             return {
                 status: 'success',
-                data: user,
+                data: response,
                 message: 'User updated successfully'
             };
         } catch (error) {
@@ -117,7 +189,8 @@ export class UserController {
     @Delete(':id')
     async deleteUser(@Param('id') id: string) {
         try {
-            const deleted = await this.userService.deleteUser(id);
+            const deleted = await this.userApplicationService.deleteUser(id);
+
             if (!deleted) {
                 throw new HttpException(
                     {
@@ -127,6 +200,7 @@ export class UserController {
                     HttpStatus.NOT_FOUND
                 );
             }
+
             return {
                 status: 'success',
                 message: 'User deleted successfully'
