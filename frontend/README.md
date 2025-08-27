@@ -10,18 +10,32 @@ Esta es la aplicación frontend del sistema de parking universitario, desarrolla
 - **Axios** - Cliente HTTP para API calls
 - **CSS Modules** - Estilos modulares
 
-## 📁 Estructura del Proyecto
+## 📁 Estructura del Proyecto (Clean Arquitecture FRONTEND)
 
 ```
-frontend/
-├── public/                 # Archivos públicos estáticos
-├── src/
-│   ├── components/        # Componentes reutilizables
-│   ├── pages/            # Páginas principales de la aplicación
-│   ├── services/         # Servicios de comunicación con APIs
-│   ├── types/           # Definiciones de tipos TypeScript
-│   ├── utils/           # Utilidades y helpers
-│   └── App.tsx          # Componente principal
+frontend/src/
+├── 🎯 CORE (Centro - Lógica de Negocio)
+│   ├── models/           # Entidades del dominio
+│   └── contexts/         # Estado global de la aplicación
+│
+├── 🔄 APPLICATION (Casos de Uso)
+│   ├── hooks/            # Lógica de aplicación reutilizable
+│   ├── services/         # Casos de uso de negocio
+│   └── utilities/        # Funciones puras de dominio
+│
+├── 🔌 INFRASTRUCTURE (Adaptadores)
+│   ├── adapters/         # Transformación de datos
+│   ├── interceptors/     # Middleware de comunicación
+│   └── redux/           # Estado persistente (opcional)
+│
+├── 🎨 PRESENTATION (UI)
+│   ├── components/       # Componentes de interfaz
+│   ├── pages/           # Vistas principales
+│   └── styled-components/ # Estilos encapsulados
+│
+└── 📱 ENTRY POINTS
+    ├── App.tsx          # Configuración principal
+    └── index.tsx        # Punto de entrada
 ├── package.json
 ├── tsconfig.json
 └── Dockerfile
