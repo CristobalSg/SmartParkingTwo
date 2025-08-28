@@ -1,47 +1,44 @@
 import { UserRepository } from '../../core/domain/repositories/UserRepository';
-import { TenantRepository } from '../../core/domain/repositories/TenantRepository';
 import { User } from '../../core/domain/entities/User';
-import { TenantId } from '../../core/domain/value-objects/TenantId';
 import { CreateUserInput, UserOutput } from '../interfaces/UserInterfaces';
 import { v4 as uuidv4 } from 'uuid';
+import { TenantContext } from '@/infrastructure/context/TenantContext';
 
 export class CreateUserUseCase {
     constructor(
         private readonly userRepository: UserRepository,
-        private readonly tenantRepository: TenantRepository // ← NUEVO: Para validar tenant
+        private readonly tenantContext: TenantContext
     ) { }
 
     async execute(input: CreateUserInput): Promise<UserOutput> {
-        // ← NUEVO: Validar que el tenant existe y está activo
-        const tenantId = new TenantId(input.tenantId);
-        const tenant = await this.tenantRepository.findByTenantId(tenantId);
+        // Validar que el tenant exista y esté activo
+        const tenant = this.tenantContext.getTenant();
+        const tenantUuid = input.tenantUuid; // UUID del input
 
-        if (!tenant) {
-            throw new Error('Tenant does not exist');
+        if (!tenant || !tenant.isActive) {
+            throw new Error(`Tenant ${tenant.tenantId.getValue() || 'unknown'} does not exist or is inactive`);
         }
 
-        if (!tenant.isActive) {
-            throw new Error('Tenant is not active');
-        }
+        // El tenantId (value object) para verificaciones de repositorio
+        const tenantId = tenant.tenantId;
 
-        // ← MODIFICADO: Buscar usuario por email dentro del tenant
-        const existingUser = await this.userRepository.findByEmail(input.email, tenantId);
+        // Verificar que no existe un usuario con este email en el tenant
+        const existingUser = await this.userRepository.findByEmail(input.email, tenantUuid);
+
         if (existingUser) {
-            throw new Error('User with this email already exists in this tenant');
+            throw new Error(`User with email ${input.email} already exists in tenant ${tenantId.getValue()}`);
         }
 
-        // ← NUEVO: Verificar límites del tenant (si están configurados)
-        if (tenant.settings?.maxUsers) {
-            const currentUserCount = await this.userRepository.countByTenant(tenantId);
-            if (currentUserCount >= tenant.settings.maxUsers) {
-                throw new Error(`Tenant has reached the maximum number of users (${tenant.settings.maxUsers})`);
-            }
+        // Opcional: Verificar límites del tenant (número máximo de usuarios)
+        const userCount = await this.userRepository.countByTenant(tenantUuid);
+        if (tenant.settings?.maxUsers && userCount >= tenant.settings.maxUsers) {
+            throw new Error(`Tenant ${tenantId.getValue()} has reached the maximum number of users (${tenant.settings.maxUsers})`);
         }
 
-        // ← MODIFICADO: Crear entidad con tenant
+        // Crear la entidad User usando el UUID del tenant
         const user = new User(
             uuidv4(),
-            tenantId, // ← NUEVO: Asociar con tenant
+            input.tenantUuid, // ← USAR UUID directamente del input
             input.email,
             input.name,
             input.emailVerified ?? false,
@@ -50,17 +47,17 @@ export class CreateUserUseCase {
             new Date()
         );
 
-        // Save through repository
+        // Guardar en el repository
         const savedUser = await this.userRepository.create(user);
 
-        // Return application output
+        // Convertir a UserOutput
         return this.mapToOutput(savedUser);
     }
 
     private mapToOutput(user: User): UserOutput {
         return {
             id: user.id,
-            tenantId: user.tenantId.getValue(), // ← NUEVO: Incluir tenant en output
+            tenantUuid: user.tenantId, // ← CAMBIAR: UUID del tenant
             email: user.email,
             name: user.name,
             emailVerified: user.emailVerified,

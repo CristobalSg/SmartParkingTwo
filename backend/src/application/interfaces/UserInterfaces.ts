@@ -1,6 +1,6 @@
 // Application layer interfaces - Framework agnostic
 export interface CreateUserInput {
-    tenantId: string; // ← NUEVO: Se requiere tenant
+    tenantUuid: string; // ← CAMBIAR: Usar UUID del tenant directamente
     email: string;
     name: string;
     emailVerified?: boolean;
@@ -17,7 +17,7 @@ export interface UpdateUserInput {
 
 export interface UserOutput {
     id: string;
-    tenantId: string; // ← NUEVO: Incluir en la respuesta
+    tenantUuid: string; // ← CAMBIAR: UUID del tenant
     email: string;
     name: string;
     emailVerified: boolean;

@@ -8,9 +8,11 @@ export class PrismaUserRepository implements UserRepository {
     constructor(private readonly prisma: PrismaService) { }
 
     async create(user: User): Promise<User> {
+        console.log(`Creating user for tenant: ${user.tenantId}`);
         const createdUser = await this.prisma.user.create({
             data: {
                 id: user.id,
+                tenantId: user.tenantId, // ← user.tenantId ya es UUID
                 email: user.email,
                 name: user.name,
                 emailVerified: user.emailVerified,
@@ -22,6 +24,7 @@ export class PrismaUserRepository implements UserRepository {
 
         return new User(
             createdUser.id,
+            createdUser.tenantId, // ← Pasar UUID directamente
             createdUser.email,
             createdUser.name,
             createdUser.emailVerified,
@@ -31,11 +34,16 @@ export class PrismaUserRepository implements UserRepository {
         );
     }
 
-    async findAll(): Promise<User[]> {
-        const users = await this.prisma.user.findMany();
+    async findAll(tenantId: string): Promise<User[]> {
+        const users = await this.prisma.user.findMany({
+            where: {
+                tenantId: tenantId // ← Usar getValue() del TenantId
+            }
+        });
 
         return users.map(user => new User(
             user.id,
+            user.tenantId, // ← Pasar UUID directamente
             user.email,
             user.name,
             user.emailVerified,
@@ -45,15 +53,19 @@ export class PrismaUserRepository implements UserRepository {
         ));
     }
 
-    async findById(id: string): Promise<User | null> {
-        const user = await this.prisma.user.findUnique({
-            where: { id }
+    async findById(id: string, tenantId: string): Promise<User | null> {
+        const user = await this.prisma.user.findFirst({
+            where: {
+                id,
+                tenantId: tenantId // ← Usar getValue() del TenantId
+            }
         });
 
         if (!user) return null;
 
         return new User(
             user.id,
+            user.tenantId, // ← Pasar UUID directamente
             user.email,
             user.name,
             user.emailVerified,
@@ -63,15 +75,19 @@ export class PrismaUserRepository implements UserRepository {
         );
     }
 
-    async findByEmail(email: string): Promise<User | null> {
-        const user = await this.prisma.user.findUnique({
-            where: { email }
+    async findByEmail(email: string, tenantId: string): Promise<User | null> {
+        const user = await this.prisma.user.findFirst({
+            where: {
+                email,
+                tenantId: tenantId // ← Usar getValue() del TenantId
+            }
         });
 
         if (!user) return null;
 
         return new User(
             user.id,
+            user.tenantId, // ← Pasar UUID directamente
             user.email,
             user.name,
             user.emailVerified,
@@ -81,10 +97,13 @@ export class PrismaUserRepository implements UserRepository {
         );
     }
 
-    async update(id: string, data: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User | null> {
+    async update(id: string, tenantId: string, data: Partial<Omit<User, 'id' | 'createdAt' | 'tenantId'>>): Promise<User | null> {
         try {
             const updatedUser = await this.prisma.user.update({
-                where: { id },
+                where: {
+                    id,
+                    tenantId: tenantId // ← Usar getValue() del TenantId
+                },
                 data: {
                     ...data,
                     updatedAt: new Date()
@@ -93,6 +112,7 @@ export class PrismaUserRepository implements UserRepository {
 
             return new User(
                 updatedUser.id,
+                updatedUser.tenantId, // ← Pasar UUID directamente
                 updatedUser.email,
                 updatedUser.name,
                 updatedUser.emailVerified,
@@ -105,14 +125,25 @@ export class PrismaUserRepository implements UserRepository {
         }
     }
 
-    async delete(id: string): Promise<boolean> {
+    async delete(id: string, tenantId: string): Promise<boolean> {
         try {
             await this.prisma.user.delete({
-                where: { id }
+                where: {
+                    id,
+                    tenantId: tenantId // ← NUEVO: Filtrar por tenant
+                }
             });
             return true;
         } catch (error) {
             return false;
         }
+    }
+
+    async countByTenant(tenantId: string): Promise<number> {
+        return await this.prisma.user.count({
+            where: {
+                tenantId: tenantId
+            }
+        });
     }
 }
