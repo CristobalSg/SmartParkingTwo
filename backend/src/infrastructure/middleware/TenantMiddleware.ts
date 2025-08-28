@@ -1,36 +1,36 @@
-import { Injectable, NestMiddleware, BadRequestException, Logger } from '@nestjs/common';
-import { Request, Response, NextFunction } from 'express';
-import { TenantId } from '../../core/domain/value-objects/TenantId';
-import { TenantContext } from '../context/TenantContext';
+import { BadRequestException, Injectable, Logger, NestMiddleware, Inject } from "@nestjs/common";
+import { TenantContext } from "../context/TenantContext";
+import { TenantRepository } from "@/core/domain/repositories/TenantRepository";
+import { NextFunction, Request, Response } from "express";
+import { TenantId } from "@/core/domain/value-objects/TenantId";
 
-// Extender el Request para incluir tenant
-declare module 'express' {
-    interface Request {
-        tenant?: TenantId;
-    }
-}
+declare module 'express' { interface Request { tenant?: TenantId; } }
 
 @Injectable()
 export class TenantMiddleware implements NestMiddleware {
     private readonly logger = new Logger(TenantMiddleware.name);
 
-    constructor(private readonly tenantContext: TenantContext) { }
+    constructor(
+        private readonly tenantContext: TenantContext,
+        @Inject('TenantRepository')
+        private readonly tenantRepository: TenantRepository // inyectar el repo
+    ) { }
 
-    use(req: Request, res: Response, next: NextFunction) {
+    async use(req: Request, res: Response, next: NextFunction) {
         try {
             let tenantId: TenantId | null = null;
 
-            // Estrategia 1: Por subdominio (empresa-a.smartparking.com)
+            // --- Estrategia 1: Subdominio
             const host = req.get('host');
             if (host) {
                 const subdomain = host.split('.')[0];
-                if (subdomain && subdomain !== 'www' && subdomain !== 'api' && subdomain !== 'localhost') {
+                if (subdomain && subdomain !== 'www' && subdomain !== 'api' && !subdomain.includes('localhost')) {
                     tenantId = new TenantId(subdomain);
                     this.logger.log(`Tenant extracted from subdomain: ${subdomain}`);
                 }
             }
 
-            // Estrategia 2: Por header X-Tenant-ID (para desarrollo/testing)
+            // --- Estrategia 2: Header
             if (!tenantId) {
                 const tenantHeader = req.get('X-Tenant-ID');
                 if (tenantHeader) {
@@ -39,13 +39,13 @@ export class TenantMiddleware implements NestMiddleware {
                 }
             }
 
-            // Estrategia 3: Por path parameter (para algunos endpoints específicos)
+            // --- Estrategia 3: Path param
             if (!tenantId && req.params.tenantId) {
                 tenantId = new TenantId(req.params.tenantId);
                 this.logger.log(`Tenant extracted from path: ${req.params.tenantId}`);
             }
 
-            // Si no se encontró tenant y no es una ruta pública
+            // --- Validación
             if (!tenantId && !this.isPublicRoute(req.path)) {
                 this.logger.error(`No tenant found for request: ${req.method} ${req.path}`);
                 throw new BadRequestException({
@@ -55,10 +55,28 @@ export class TenantMiddleware implements NestMiddleware {
                 });
             }
 
-            // Configurar el contexto si se encontró un tenant
+            // --- Cargar el Tenant de la base
             if (tenantId) {
+                const tenant = await this.tenantRepository.findByTenantId(tenantId);
+
+                if (!tenant) {
+                    throw new BadRequestException({
+                        message: 'Tenant not found',
+                        code: 'TENANT_NOT_FOUND',
+                        details: `No tenant exists with id ${tenantId.toString()}`
+                    });
+                }
+
+                if (!tenant.isActive) {
+                    throw new BadRequestException({
+                        message: 'Tenant is inactive',
+                        code: 'TENANT_INACTIVE',
+                        details: `Tenant ${tenantId.toString()} is deactivated`
+                    });
+                }
                 req.tenant = tenantId;
-                this.tenantContext.setTenantId(tenantId);
+                // Guardar en contexto
+                this.tenantContext.setTenant(tenant);
             }
 
             next();
@@ -77,7 +95,6 @@ export class TenantMiddleware implements NestMiddleware {
         }
     }
 
-    // Rutas que no requieren tenant (health check, docs, etc.)
     private isPublicRoute(path: string): boolean {
         const publicRoutes = [
             '/health',
@@ -88,7 +105,6 @@ export class TenantMiddleware implements NestMiddleware {
             '/swagger',
             '/favicon.ico'
         ];
-
         return publicRoutes.some(route => path.startsWith(route));
     }
 }

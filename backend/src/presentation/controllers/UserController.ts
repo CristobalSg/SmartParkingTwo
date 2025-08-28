@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, HttpStatus, HttpExcept
 import { UserApplicationService } from '../../application/services/UserApplicationService';
 import { CreateUserDto, UpdateUserDto, UserResponseDto } from '../dtos/UserDto';
 import { CreateUserInput, UpdateUserInput } from '../../application/interfaces/UserInterfaces';
+import { TenantContext } from '../../infrastructure/context/TenantContext';
 
 export const USER_APPLICATION_SERVICE_TOKEN = 'USER_APPLICATION_SERVICE_TOKEN';
 
@@ -9,7 +10,8 @@ export const USER_APPLICATION_SERVICE_TOKEN = 'USER_APPLICATION_SERVICE_TOKEN';
 export class UserController {
     constructor(
         @Inject(USER_APPLICATION_SERVICE_TOKEN)
-        private readonly userApplicationService: UserApplicationService
+        private readonly userApplicationService: UserApplicationService,
+        private readonly tenantContext: TenantContext
     ) { }
 
     @Post()
@@ -19,6 +21,7 @@ export class UserController {
             const input: CreateUserInput = {
                 email: createUserDto.email,
                 name: createUserDto.name,
+                tenantUuid: this.tenantContext.getTenantUuid(), // ← CAMBIAR: Usar UUID
                 emailVerified: createUserDto.emailVerified,
                 verificationToken: createUserDto.verificationToken,
             };

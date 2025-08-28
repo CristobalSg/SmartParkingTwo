@@ -14,7 +14,7 @@ export class TenantId {
         // Solo letras, números y guiones
         const tenantIdRegex = /^[a-zA-Z0-9-]+$/;
         if (!tenantIdRegex.test(tenantId)) {
-            throw new Error('Tenant ID can only contain letters, numbers, and hyphens');
+            throw new Error(`Tenant ID can only contain letters, numbers, and hyphens, received: ${tenantId}`);
         }
 
         if (tenantId.length < 2 || tenantId.length > 50) {
