@@ -1,28 +1,36 @@
+import { TenantContext } from '@/infrastructure/context/TenantContext';
 import { UserRepository } from '../../core/domain/repositories/UserRepository';
 import { UpdateUserInput, UserOutput } from '../interfaces/UserInterfaces';
 
 export class UpdateUserUseCase {
     constructor(
-        private readonly userRepository: UserRepository
-    ) {}
+        private readonly userRepository: UserRepository,
+        private readonly tenantContext: TenantContext
+    ) { }
 
     async execute(id: string, input: UpdateUserInput): Promise<UserOutput | null> {
-        const existingUser = await this.userRepository.findById(id);
-        
+        const tenantUuid = this.tenantContext.getTenantUuid();
+        const existingUser = await this.userRepository.findById(id, tenantUuid);
+
         if (!existingUser) {
             throw new Error('User not found');
         }
 
-        // Check if email is being updated and if it's already taken
+        // Verificar que el usuario pertenece al tenant correcto
+        if (!existingUser.belongsToTenant(tenantUuid)) {
+            throw new Error('Access denied: User belongs to different tenant');
+        }
+
+        // Check if email is being updated and if it's already taken IN THE SAME TENANT
         if (input.email && input.email !== existingUser.email) {
-            const userWithSameEmail = await this.userRepository.findByEmail(input.email);
+            const userWithSameEmail = await this.userRepository.findByEmail(input.email, tenantUuid);
             if (userWithSameEmail) {
-                throw new Error('Email already in use by another user');
+                throw new Error('Email already in use by another user in this tenant');
             }
         }
 
         // Update using repository
-        const result = await this.userRepository.update(id, {
+        const result = await this.userRepository.update(id, tenantUuid, {
             email: input.email,
             name: input.name,
             emailVerified: input.emailVerified,
@@ -36,6 +44,7 @@ export class UpdateUserUseCase {
 
         return {
             id: result.id,
+            tenantUuid: result.tenantId, // ← CAMBIAR: result.tenantId es ahora UUID
             email: result.email,
             name: result.name,
             emailVerified: result.emailVerified,

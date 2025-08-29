@@ -5,39 +5,38 @@ import { GetUserByIdUseCase } from '../use-cases/GetUserByIdUseCase';
 import { UpdateUserUseCase } from '../use-cases/UpdateUserUseCase';
 import { DeleteUserUseCase } from '../use-cases/DeleteUserUseCase';
 import { UserRepository } from '../../core/domain/repositories/UserRepository';
+import { TenantContext } from '../../infrastructure/context/TenantContext';
 
 export class UserApplicationService {
-    private createUserUseCase: CreateUserUseCase;
-    private getAllUsersUseCase: GetAllUsersUseCase;
-    private getUserByIdUseCase: GetUserByIdUseCase;
-    private updateUserUseCase: UpdateUserUseCase;
-    private deleteUserUseCase: DeleteUserUseCase;
+    constructor(
+        private readonly userRepository: UserRepository,
+        private readonly tenantContext: TenantContext
+    ) { }
 
-    constructor(userRepository: UserRepository) {
-        this.createUserUseCase = new CreateUserUseCase(userRepository);
-        this.getAllUsersUseCase = new GetAllUsersUseCase(userRepository);
-        this.getUserByIdUseCase = new GetUserByIdUseCase(userRepository);
-        this.updateUserUseCase = new UpdateUserUseCase(userRepository);
-        this.deleteUserUseCase = new DeleteUserUseCase(userRepository);
+    async createUser(input:CreateUserInput): Promise<UserOutput> {
+        console.log("Creating user.. appservice.");
+        const createUserUseCase = new CreateUserUseCase(this.userRepository,this.tenantContext);
+        return await createUserUseCase.execute(input);
     }
 
-    async createUser(input: CreateUserInput): Promise<UserOutput> {
-        return await this.createUserUseCase.execute(input);
-    }
 
     async getAllUsers(): Promise<UserOutput[]> {
-        return await this.getAllUsersUseCase.execute();
+        const getAllUsersUseCase = new GetAllUsersUseCase(this.userRepository,this.tenantContext);
+        return await getAllUsersUseCase.execute();
     }
 
     async getUserById(id: string): Promise<UserOutput | null> {
-        return await this.getUserByIdUseCase.execute(id);
+        const getUserByIdUseCase = new GetUserByIdUseCase(this.userRepository,this.tenantContext);
+        return await getUserByIdUseCase.execute(id);
     }
 
     async updateUser(id: string, input: UpdateUserInput): Promise<UserOutput | null> {
-        return await this.updateUserUseCase.execute(id, input);
+        const updateUserUseCase = new UpdateUserUseCase(this.userRepository,this.tenantContext);
+        return await updateUserUseCase.execute(id, input);
     }
 
     async deleteUser(id: string): Promise<boolean> {
-        return await this.deleteUserUseCase.execute(id);
+        const deleteUserUseCase = new DeleteUserUseCase(this.userRepository,this.tenantContext);
+        return await deleteUserUseCase.execute(id);
     }
 }

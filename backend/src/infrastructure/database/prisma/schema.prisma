@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../../../../../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -27,43 +26,75 @@ enum ReservationStatus {
   expired
 }
 
-// Tabla de administradores
+// 🏢 NUEVA TABLA: Tenants (inquilinos/organizaciones)
+model Tenant {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @unique @map("tenant_id") @db.VarChar(50) // empresa-a, ciudad-b, etc.
+  name      String   @db.VarChar(255) // "Empresa A S.L.", "Ciudad B"
+  domain    String   @unique @db.VarChar(255) // "empresa-a.smartparking.com"
+  isActive  Boolean  @default(true) @map("is_active")
+  settings  Json?    @db.JsonB // Configuraciones específicas del tenant
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relaciones con otras tablas
+  administrators Administrator[]
+  users          User[]
+  parkingZones   ParkingZone[]
+
+  @@map("tenants")
+}
+
+// Tabla de administradores - AHORA CON TENANT
 model Administrator {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email        String   @unique @db.VarChar(255)
+  tenantId     String   @map("tenant_id") @db.Uuid // ← NUEVO CAMPO
+  email        String   @db.VarChar(255) // ← YA NO ES UNIQUE GLOBAL
   passwordHash String   @map("password_hash") @db.VarChar(255)
   name         String   @db.VarChar(255)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Email único POR TENANT, no globalmente
+  @@unique([tenantId, email])
   @@map("administrators")
 }
 
-// Tabla de usuarios finales
+// Tabla de usuarios finales - AHORA CON TENANT
 model User {
   id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email             String   @unique @db.VarChar(255)
+  tenantId          String   @map("tenant_id") @db.Uuid // ← NUEVO CAMPO
+  email             String   @db.VarChar(255) // ← YA NO ES UNIQUE GLOBAL
   name              String   @db.VarChar(255)
   emailVerified     Boolean  @default(false) @map("email_verified")
   verificationToken String?  @map("verification_token") @db.VarChar(255)
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   reservations Reservation[]
 
+  // Email único POR TENANT, no globalmente
+  @@unique([tenantId, email])
   @@map("users")
 }
 
-// Zonas de estacionamiento
+// Zonas de estacionamiento - AHORA CON TENANT
 model ParkingZone {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid // ← NUEVO CAMPO
   name        String   @db.VarChar(255)
   description String?  @db.Text
   capacity    Int
   createdAt   DateTime @default(now()) @map("created_at")
 
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   parkingSpaces ParkingSpace[]
 
+  // Nombre único POR TENANT
+  @@unique([tenantId, name])
   @@map("parking_zones")
 }
 
