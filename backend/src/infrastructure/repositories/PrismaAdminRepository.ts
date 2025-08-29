@@ -1,0 +1,224 @@
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../database/prisma.service';
+import { AdminRepository, AdminSearchFilters } from '../../core/domain/repositories/AdminRepository';
+import { Admin } from '../../core/domain/entities/Admin';
+
+@Injectable()
+export class PrismaAdminRepository implements AdminRepository {
+    constructor(private readonly prisma: PrismaService) { }
+
+    async create(admin: Admin): Promise<Admin> {
+        const adminData = await this.prisma.administrator.create({
+            data: {
+                id: admin.id,
+                tenantId: admin.tenantId,
+                email: admin.email,
+                passwordHash: admin.passwordHash,
+                name: admin.name,
+                createdAt: admin.createdAt,
+                updatedAt: admin.updatedAt,
+            },
+        });
+
+        return this.mapToEntity(adminData);
+    }
+
+    async findAll(tenantId: string): Promise<Admin[]> {
+        const admins = await this.prisma.administrator.findMany({
+            where: { tenantId },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        return admins.map(admin => this.mapToEntity(admin));
+    }
+
+    async findById(id: string, tenantId: string): Promise<Admin | null> {
+        const admin = await this.prisma.administrator.findFirst({
+            where: { id, tenantId },
+        });
+
+        return admin ? this.mapToEntity(admin) : null;
+    }
+
+    async findByEmail(email: string, tenantId: string): Promise<Admin | null> {
+        const admin = await this.prisma.administrator.findFirst({
+            where: { email, tenantId },
+        });
+
+        return admin ? this.mapToEntity(admin) : null;
+    }
+
+    async findByEmailForAuth(email: string, tenantId: string): Promise<Admin | null> {
+        // Este método incluye el passwordHash para autenticación
+        const admin = await this.prisma.administrator.findFirst({
+            where: { email, tenantId },
+        });
+
+        return admin ? this.mapToEntity(admin) : null;
+    }
+
+    async update(
+        id: string,
+        tenantId: string,
+        data: Partial<Omit<Admin, 'id' | 'createdAt' | 'tenantId' | 'passwordHash'>>
+    ): Promise<Admin | null> {
+        try {
+            const adminData = await this.prisma.administrator.update({
+                where: { id, tenantId },
+                data: {
+                    ...data,
+                    updatedAt: new Date(),
+                },
+            });
+
+            return this.mapToEntity(adminData);
+        } catch (error) {
+            // Si no existe el administrador
+            return null;
+        }
+    }
+
+    async updatePassword(id: string, tenantId: string, newPasswordHash: string): Promise<Admin | null> {
+        try {
+            const adminData = await this.prisma.administrator.update({
+                where: { id, tenantId },
+                data: {
+                    passwordHash: newPasswordHash,
+                    updatedAt: new Date(),
+                },
+            });
+
+            return this.mapToEntity(adminData);
+        } catch (error) {
+            return null;
+        }
+    }
+
+    async delete(id: string, tenantId: string): Promise<boolean> {
+        try {
+            await this.prisma.administrator.delete({
+                where: { id, tenantId },
+            });
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    async existsByEmail(email: string, tenantId: string): Promise<boolean> {
+        const count = await this.prisma.administrator.count({
+            where: { email, tenantId },
+        });
+        return count > 0;
+    }
+
+    async existsById(id: string, tenantId: string): Promise<boolean> {
+        const count = await this.prisma.administrator.count({
+            where: { id, tenantId },
+        });
+        return count > 0;
+    }
+
+    async countByTenant(tenantId: string): Promise<number> {
+        return await this.prisma.administrator.count({
+            where: { tenantId },
+        });
+    }
+
+    async findByFilters(tenantId: string, filters: AdminSearchFilters): Promise<Admin[]> {
+        const whereClause: any = { tenantId };
+
+        // Aplicar filtros
+        if (filters.email) {
+            whereClause.email = { contains: filters.email, mode: 'insensitive' };
+        }
+        if (filters.name) {
+            whereClause.name = { contains: filters.name, mode: 'insensitive' };
+        }
+        if (filters.createdAfter) {
+            whereClause.createdAt = { ...whereClause.createdAt, gte: filters.createdAfter };
+        }
+        if (filters.createdBefore) {
+            whereClause.createdAt = { ...whereClause.createdAt, lte: filters.createdBefore };
+        }
+        if (filters.updatedAfter) {
+            whereClause.updatedAt = { ...whereClause.updatedAt, gte: filters.updatedAfter };
+        }
+        if (filters.updatedBefore) {
+            whereClause.updatedAt = { ...whereClause.updatedAt, lte: filters.updatedBefore };
+        }
+
+        // Configurar ordenamiento
+        let orderBy: any = { createdAt: 'desc' };
+        if (filters.orderBy) {
+            orderBy = {
+                [filters.orderBy]: filters.orderDirection || 'desc'
+            };
+        }
+
+        const admins = await this.prisma.administrator.findMany({
+            where: whereClause,
+            orderBy,
+            take: filters.limit,
+            skip: filters.offset,
+        });
+
+        return admins.map(admin => this.mapToEntity(admin));
+    }
+
+    async findRecentlyCreated(tenantId: string, days: number = 7): Promise<Admin[]> {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+
+        const admins = await this.prisma.administrator.findMany({
+            where: {
+                tenantId,
+                createdAt: { gte: cutoffDate },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        return admins.map(admin => this.mapToEntity(admin));
+    }
+
+    async findRecentlyUpdated(tenantId: string, days: number = 7): Promise<Admin[]> {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+
+        const admins = await this.prisma.administrator.findMany({
+            where: {
+                tenantId,
+                updatedAt: { gte: cutoffDate },
+            },
+            orderBy: { updatedAt: 'desc' },
+        });
+
+        return admins.map(admin => this.mapToEntity(admin));
+    }
+
+    // Métodos opcionales para super admin
+    async findAllAcrossTenants(): Promise<Admin[]> {
+        const admins = await this.prisma.administrator.findMany({
+            orderBy: { createdAt: 'desc' },
+        });
+
+        return admins.map(admin => this.mapToEntity(admin));
+    }
+
+    async countAcrossTenants(): Promise<number> {
+        return await this.prisma.administrator.count();
+    }
+
+    // Mapeo de datos de Prisma a entidad de dominio
+    private mapToEntity(adminData: any): Admin {
+        return new Admin(
+            adminData.id,
+            adminData.tenantId,
+            adminData.email,
+            adminData.passwordHash,
+            adminData.name,
+            adminData.createdAt,
+            adminData.updatedAt
+        );
+    }
+}
