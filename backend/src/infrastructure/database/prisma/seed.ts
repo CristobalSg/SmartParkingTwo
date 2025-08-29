@@ -4,7 +4,7 @@ import * as bcrypt from 'bcryptjs'
 const prisma = new PrismaClient()
 
 async function main() {
-    console.log('🌱 Iniciando semilla de datos para Smart Parking...')
+    console.log('🌱 Iniciando semilla de datos para Smart Parking con Multitenancy...')
 
     // Limpiar datos existentes
     await prisma.reservation.deleteMany()
@@ -12,36 +12,103 @@ async function main() {
     await prisma.parkingZone.deleteMany()
     await prisma.user.deleteMany()
     await prisma.administrator.deleteMany()
+    await prisma.tenant.deleteMany()
 
     console.log('🧹 Base de datos limpiada')
 
-    // Crear administradores
+    // Crear tenants primero
+    const tenants = await Promise.all([
+        prisma.tenant.create({
+            data: {
+                tenantId: 'universidad-nacional',
+                name: 'Universidad Nacional',
+                domain: 'universidad.edu',
+                isActive: true,
+                settings: JSON.stringify({
+                    maxUsers: 1000,
+                    maxParkingSpaces: 500,
+                    features: ['reservations', 'reports', 'notifications']
+                })
+            }
+        }),
+        prisma.tenant.create({
+            data: {
+                tenantId: 'empresa-tech',
+                name: 'Empresa Tech Solutions',
+                domain: 'techsolutions.com',
+                isActive: true,
+                settings: JSON.stringify({
+                    maxUsers: 200,
+                    maxParkingSpaces: 100,
+                    features: ['reservations', 'electric-charging']
+                })
+            }
+        }),
+        prisma.tenant.create({
+            data: {
+                tenantId: 'hospital-central',
+                name: 'Hospital Central',
+                domain: 'hospital-central.gov',
+                isActive: true,
+                settings: JSON.stringify({
+                    maxUsers: 500,
+                    maxParkingSpaces: 300,
+                    features: ['reservations', 'emergency-access', '24-7-support']
+                })
+            }
+        })
+    ])
+
+    console.log(`🏢 ${tenants.length} tenants creados: ${tenants.map(t => t.name).join(', ')}`)
+
+    // Crear administradores para cada tenant
     const adminPassword = await bcrypt.hash('admin123', 10)
-    const admin1 = await prisma.administrator.create({
-        data: {
-            email: 'admin@universidad.edu',
-            passwordHash: adminPassword,
-            name: 'Juan Pérez - Administrador Principal',
-        },
-    })
+    const admins = await Promise.all([
+        prisma.administrator.create({
+            data: {
+                email: 'admin@universidad.edu',
+                passwordHash: adminPassword,
+                name: 'Juan Pérez - Administrador Principal',
+                tenant: { connect: { id: tenants[0].id } }
+            },
+        }),
+        prisma.administrator.create({
+            data: {
+                email: 'supervisor@universidad.edu',
+                passwordHash: await bcrypt.hash('super123', 10),
+                name: 'María García - Supervisora',
+                tenant: { connect: { id: tenants[0].id } }
+            },
+        }),
+        prisma.administrator.create({
+            data: {
+                email: 'admin@techsolutions.com',
+                passwordHash: adminPassword,
+                name: 'Carlos Tech - Admin IT',
+                tenant: { connect: { id: tenants[1].id } }
+            },
+        }),
+        prisma.administrator.create({
+            data: {
+                email: 'admin@hospital-central.gov',
+                passwordHash: adminPassword,
+                name: 'Dra. Ana Médica - Admin Hospital',
+                tenant: { connect: { id: tenants[2].id } }
+            },
+        })
+    ])
 
-    const admin2 = await prisma.administrator.create({
-        data: {
-            email: 'supervisor@universidad.edu',
-            passwordHash: await bcrypt.hash('super123', 10),
-            name: 'María García - Supervisora',
-        },
-    })
+    console.log(`👤 ${admins.length} administradores creados`)
 
-    console.log(`👤 Administradores creados: ${admin1.email}, ${admin2.email}`)
-
-    // Crear usuarios de ejemplo
+    // Crear usuarios para diferentes tenants
     const users = await Promise.all([
+        // Usuarios Universidad Nacional
         prisma.user.create({
             data: {
                 email: 'carlos.rodriguez@estudiante.edu',
                 name: 'Carlos Rodríguez',
                 emailVerified: true,
+                tenant: { connect: { id: tenants[0].id } }
             },
         }),
         prisma.user.create({
@@ -49,6 +116,7 @@ async function main() {
                 email: 'ana.martinez@profesor.edu',
                 name: 'Ana Martínez',
                 emailVerified: true,
+                tenant: { connect: { id: tenants[0].id } }
             },
         }),
         prisma.user.create({
@@ -57,28 +125,105 @@ async function main() {
                 name: 'Pedro López',
                 emailVerified: false,
                 verificationToken: 'token_123',
+                tenant: { connect: { id: tenants[0].id } }
+            },
+        }),
+        // Usuarios Empresa Tech
+        prisma.user.create({
+            data: {
+                email: 'developer@techsolutions.com',
+                name: 'Luis Developer',
+                emailVerified: true,
+                tenant: { connect: { id: tenants[1].id } }
+            },
+        }),
+        prisma.user.create({
+            data: {
+                email: 'manager@techsolutions.com',
+                name: 'Sofia Manager',
+                emailVerified: true,
+                tenant: { connect: { id: tenants[1].id } }
+            },
+        }),
+        // Usuarios Hospital
+        prisma.user.create({
+            data: {
+                email: 'doctor@hospital-central.gov',
+                name: 'Dr. Miguel Cirujano',
+                emailVerified: true,
+                tenant: { connect: { id: tenants[2].id } }
             },
         }),
     ])
 
     console.log(`👥 ${users.length} usuarios creados`)
 
-    // Crear zonas de estacionamiento
+    // Crear zonas de estacionamiento para cada tenant
     const zones = await Promise.all([
+        // Zonas Universidad Nacional
         prisma.parkingZone.create({
-            data: { name: 'Piso 1 - Subterráneo', description: 'Zona principal subterránea', capacity: 50 }
+            data: {
+                name: 'Piso 1 - Subterráneo',
+                description: 'Zona principal subterránea',
+                capacity: 50,
+                tenant: { connect: { id: tenants[0].id } }
+            }
         }),
         prisma.parkingZone.create({
-            data: { name: 'Piso 2 - Subterráneo', description: 'Segundo nivel subterráneo', capacity: 45 }
+            data: {
+                name: 'Piso 2 - Subterráneo',
+                description: 'Segundo nivel subterráneo',
+                capacity: 45,
+                tenant: { connect: { id: tenants[0].id } }
+            }
         }),
         prisma.parkingZone.create({
-            data: { name: 'Zona A - Exterior', description: 'Estacionamiento exterior', capacity: 30 }
+            data: {
+                name: 'Zona A - Exterior',
+                description: 'Estacionamiento exterior',
+                capacity: 30,
+                tenant: { connect: { id: tenants[0].id } }
+            }
+        }),
+        // Zonas Empresa Tech
+        prisma.parkingZone.create({
+            data: {
+                name: 'Edificio Principal',
+                description: 'Estacionamiento empleados',
+                capacity: 60,
+                tenant: { connect: { id: tenants[1].id } }
+            }
+        }),
+        prisma.parkingZone.create({
+            data: {
+                name: 'Zona Visitantes',
+                description: 'Para clientes y visitantes',
+                capacity: 25,
+                tenant: { connect: { id: tenants[1].id } }
+            }
+        }),
+        // Zonas Hospital
+        prisma.parkingZone.create({
+            data: {
+                name: 'Emergencias',
+                description: 'Zona de emergencias 24/7',
+                capacity: 40,
+                tenant: { connect: { id: tenants[2].id } }
+            }
+        }),
+        prisma.parkingZone.create({
+            data: {
+                name: 'Personal Médico',
+                description: 'Exclusivo para doctores y enfermeros',
+                capacity: 80,
+                tenant: { connect: { id: tenants[2].id } }
+            }
         }),
     ])
 
     console.log(`🏢 ${zones.length} zonas creadas`)
 
-    // Crear espacios de estacionamiento
+    // Crear espacios de estacionamiento para las primeras 3 zonas (Universidad)
     const parkingSpaces = []
 
     // Piso 1: 45 regulares + 3 discapacitados + 2 embarazadas
@@ -136,24 +281,53 @@ async function main() {
         })
     }
 
+    // Agregar espacios para Empresa Tech (Edificio Principal - algunos espacios)
+    for (let i = 1; i <= 20; i++) {
+        parkingSpaces.push({
+            zoneId: zones[3].id,
+            spaceNumber: `EP-${i.toString().padStart(2, '0')}`,
+            specialType: ParkingSpecialType.regular,
+        })
+    }
+    for (let i = 21; i <= 25; i++) {
+        parkingSpaces.push({
+            zoneId: zones[3].id,
+            spaceNumber: `EP-${i.toString().padStart(2, '0')}`,
+            specialType: ParkingSpecialType.electric,
+        })
+    }
+
+    // Agregar algunos espacios para Hospital
+    for (let i = 1; i <= 15; i++) {
+        parkingSpaces.push({
+            zoneId: zones[5].id,
+            spaceNumber: `EM-${i.toString().padStart(2, '0')}`,
+            specialType: ParkingSpecialType.regular,
+        })
+    }
+
     await prisma.parkingSpace.createMany({ data: parkingSpaces })
     console.log(`🅿️  ${parkingSpaces.length} espacios creados`)
 
-    // Crear algunas reservas de ejemplo
-    const spaces = await prisma.parkingSpace.findMany({ take: 5 })
+    // Crear algunas reservas de ejemplo (solo para Universidad)
+    const universitySpaces = await prisma.parkingSpace.findMany({
+        where: { zone: { tenantId: tenants[0].id } },
+        take: 5
+    })
+    const universityUsers = users.filter(u => [0, 1, 2].includes(users.indexOf(u)))
     const now = new Date()
 
     const reservations = [
         {
-            userId: users[0].id,
-            parkingSpaceId: spaces[0].id,
+            userId: universityUsers[0].id,
+            parkingSpaceId: universitySpaces[0].id,
             status: ReservationStatus.confirmed,
             reservedFrom: new Date(now.getTime() + 2 * 60 * 60 * 1000),
             reservedUntil: new Date(now.getTime() + 6 * 60 * 60 * 1000),
         },
         {
-            userId: users[1].id,
-            parkingSpaceId: spaces[1].id,
+            userId: universityUsers[1].id,
+            parkingSpaceId: universitySpaces[1].id,
             status: ReservationStatus.active,
             reservedFrom: new Date(now.getTime() - 1 * 60 * 60 * 1000),
             reservedUntil: new Date(now.getTime() + 3 * 60 * 60 * 1000),
@@ -163,17 +337,23 @@ async function main() {
     await prisma.reservation.createMany({ data: reservations })
     console.log(`📅 ${reservations.length} reservas de ejemplo creadas`)
 
-    // Resumen final
-    const counts = {
-        administradores: await prisma.administrator.count(),
-        usuarios: await prisma.user.count(),
-        zonas: await prisma.parkingZone.count(),
-        espacios: await prisma.parkingSpace.count(),
-        reservas: await prisma.reservation.count(),
+    // Resumen final por tenant
+    for (const tenant of tenants) {
+        const counts = {
+            tenant: tenant.name,
+            administradores: await prisma.administrator.count({ where: { tenantId: tenant.id } }),
+            usuarios: await prisma.user.count({ where: { tenantId: tenant.id } }),
+            zonas: await prisma.parkingZone.count({ where: { tenantId: tenant.id } }),
+            espacios: await prisma.parkingSpace.count({ where: { zone: { tenantId: tenant.id } } }),
+            reservas: await prisma.reservation.count({
+                where: { parkingSpace: { zone: { tenantId: tenant.id } } }
+            }),
+        }
+
+        console.log(`\n📊 ${tenant.name} (${tenant.tenantId}):`, counts)
     }
 
-    console.log('\n✅ Semilla completada exitosamente!')
-    console.log('📊 Resumen:', counts)
+    console.log('\n✅ Semilla con Multitenancy completada exitosamente!')
 }
 
 main()
