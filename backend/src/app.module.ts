@@ -1,12 +1,14 @@
-import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
-import { UserModule } from './infrastructure/modules/user.module';
-import { TenantModule } from './infrastructure/modules/tenant.module';
-import { TenantMiddleware } from './infrastructure/middleware/TenantMiddleware';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common'
+import { UserModule } from './infrastructure/modules/user.module'
+import { TenantModule } from './infrastructure/modules/tenant.module'
+import { AdminModule } from './infrastructure/modules/admin.module'
+import { TenantMiddleware } from './infrastructure/middleware/TenantMiddleware'
 
 @Module({
     imports: [
         TenantModule, // ← Módulo global para TenantContext
-        UserModule
+        UserModule,
+        AdminModule, // ← Nuevo módulo de administradores
     ],
     controllers: [],
     providers: [],
