@@ -1,5 +1,5 @@
 import { PrismaClient, ParkingSpecialType, ReservationStatus } from '@prisma/client'
-import * as bcrypt from 'bcryptjs'
+import { hashPassword } from '../../../shared/utils/crypto-utils'
 
 const prisma = new PrismaClient()
 
@@ -62,7 +62,7 @@ async function main() {
     console.log(`🏢 ${tenants.length} tenants creados: ${tenants.map(t => t.name).join(', ')}`)
 
     // Crear administradores para cada tenant
-    const adminPassword = await bcrypt.hash('admin123', 10)
+    const adminPassword = hashPassword('admin123')
     const admins = await Promise.all([
         prisma.administrator.create({
             data: {
@@ -75,7 +75,7 @@ async function main() {
         prisma.administrator.create({
             data: {
                 email: 'supervisor@universidad.edu',
-                passwordHash: await bcrypt.hash('super123', 10),
+                passwordHash: hashPassword('super123'),
                 name: 'María García - Supervisora',
                 tenant: { connect: { id: tenants[0].id } }
             },
