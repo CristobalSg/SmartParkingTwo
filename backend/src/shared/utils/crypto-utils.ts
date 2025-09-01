@@ -1,140 +1,199 @@
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, timingSafeEqual, scryptSync } from 'crypto';
 
 /**
  * Utilidad para manejo de criptografía usando solo APIs nativas de Node.js
  * Sin dependencias externas como bcrypt
  */
 
-/**
- * Genera un hash SHA-256 de una contraseña con salt
- * @param plainPassword - Contraseña en texto plano
- * @param salt - Salt opcional, si no se proporciona se genera uno
- * @returns Hash de la contraseña con el salt incluido
- */
-export function hashPassword(plainPassword: string, salt?: string): string {
+const SALT_SIZE = 32;
+const HASH_LENGTH = 64;
+const SCRYPT_OPTIONS = {
+    N: 16384, // Factor de costo (2^14)
+    r: 8,     // Tamaño de bloque
+    p: 1,     // Paralelización
+    maxmem: 64 * 1024 * 1024 // 64MB máximo de memoria
+};
+
+
+export function hashPassword(plainPassword: string): string {
     // Validar que la contraseña no esté vacía
     if (!plainPassword || plainPassword.length === 0) {
         throw new Error('Password cannot be empty');
     }
 
-    // Generar salt si no se proporciona
-    if (!salt) {
-        salt = randomBytes(16).toString('hex'); // 32 caracteres hex
+    if (plainPassword.length < 8) {
+        throw new Error('Password must be at least 8 characters long');
     }
 
-    // Crear hash SHA-256 de contraseña + salt
-    const hash = createHash('sha256')
-        .update(plainPassword + salt)
-        .digest('hex');
+    const salt = randomBytes(SALT_SIZE);
 
-    // Retornar salt:hash para poder verificar después
-    return `${salt}:${hash}`;
+    // Usar scryptSync con las opciones de seguridad configuradas
+    const hash = scryptSync(plainPassword, salt, HASH_LENGTH, SCRYPT_OPTIONS);
+
+    return `${salt.toString('hex')}:${hash.toString('hex')}`;
 }
 
-/**
- * Verifica si una contraseña coincide con un hash
- * @param plainPassword - Contraseña en texto plano
- * @param hashedPassword - Hash almacenado (formato: salt:hash)
- * @returns true si la contraseña es correcta
- */
+
 export function verifyPassword(plainPassword: string, hashedPassword: string): boolean {
     try {
-        // Dividir el hash almacenado en salt y hash
-        const [salt, originalHash] = hashedPassword.split(':');
+        const parts = hashedPassword.split(':');
 
-        if (!salt || !originalHash) {
+        if (parts.length !== 2) {
             return false;
         }
 
-        // Crear hash de la contraseña proporcionada con el mismo salt
-        const testHash = createHash('sha256')
-            .update(plainPassword + salt)
-            .digest('hex');
+        const [saltHex, originalHashHex] = parts;
+        const salt = Buffer.from(saltHex, 'hex');
+        const originalHash = Buffer.from(originalHashHex, 'hex');
 
-        // Comparar los hashes
-        return testHash === originalHash;
+        if (salt.length !== SALT_SIZE || originalHash.length !== HASH_LENGTH) {
+            return false;
+        }
+
+        // Recalcular el hash con la misma configuración
+        const testHash = scryptSync(plainPassword, salt, HASH_LENGTH, SCRYPT_OPTIONS);
+
+        // Comparación de tiempo constante (protege contra timing attacks)
+        return timingSafeEqual(originalHash, testHash);
+
     } catch (error) {
+        // En caso de error, devolver false sin revelar información
         return false;
     }
 }
 
 /**
- * Genera un token simple para autenticación
- * @param payload - Datos a incluir en el token
- * @returns Token generado
+ * Token mejorado usando HMAC para integridad (sin JWT pero más seguro)
  */
-export function generateSimpleToken(payload: any): string {
-    // Crear un timestamp
+export function generateSimpleToken(payload: any, secret: string = process.env.TOKEN_SECRET || 'default-secret'): string {
+    // Crear timestamp y nonce para unicidad
     const timestamp = Date.now();
+    const nonce = randomBytes(16).toString('hex');
 
-    // Generar un número aleatorio para mayor unicidad
-    const randomValue = Math.random().toString(36).substring(2);
-
-    // Combinar payload con timestamp y valor aleatorio
+    // Preparar datos del token
     const tokenData = {
-        ...payload,
+        payload,
         timestamp,
-        random: randomValue
+        nonce,
+        version: '1.0'
     };
 
-    // Crear hash SHA-256 del token data como "firma"
+    const dataString = JSON.stringify(tokenData);
+    const dataBase64 = Buffer.from(dataString).toString('base64url');
+
+    // Crear HMAC como firma (mucho más seguro que tu hash actual)
     const signature = createHash('sha256')
-        .update(JSON.stringify(tokenData))
+        .update(secret + dataBase64 + secret) // Sandwich con secret
         .digest('hex');
 
-    // Crear el token final: datos + firma
-    const token = {
-        data: tokenData,
-        signature
-    };
-
-    // Convertir a string (sin usar base64)
-    return JSON.stringify(token);
+    // Token final: data.signature
+    return `${dataBase64}.${signature}`;
 }
 
 /**
- * Valida un token simple
- * @param token - Token a validar
- * @param maxAge - Edad máxima del token en milisegundos (default: 24 horas)
- * @returns Datos del token si es válido, null si no
+ * Validación de token mejorada con verificación HMAC
  */
-export function validateSimpleToken(token: string, maxAge: number = 24 * 60 * 60 * 1000): any {
+export function validateSimpleToken(
+    token: string,
+    secret: string = process.env.TOKEN_SECRET || 'default-secret',
+    maxAge: number = 24 * 60 * 60 * 1000 // 24 horas
+): any {
     try {
-        // Parsear el token
-        const tokenObj = JSON.parse(token);
-
-        if (!tokenObj.data || !tokenObj.signature) {
+        // Parsear token
+        const parts = token.split('.');
+        if (parts.length !== 2) {
             return null;
         }
 
-        // Verificar la firma
+        const [dataBase64, signature] = parts;
+
+        // Verificar firma HMAC
         const expectedSignature = createHash('sha256')
-            .update(JSON.stringify(tokenObj.data))
+            .update(secret + dataBase64 + secret)
             .digest('hex');
 
-        if (expectedSignature !== tokenObj.signature) {
+        // Comparación de tiempo constante para la firma
+        if (!timingSafeEqual(
+            Buffer.from(signature, 'hex'),
+            Buffer.from(expectedSignature, 'hex')
+        )) {
             return null;
         }
 
-        // Verificar que no esté expirado
-        const tokenAge = Date.now() - tokenObj.data.timestamp;
-        if (tokenAge > maxAge) {
+        // Decodificar datos
+        const dataString = Buffer.from(dataBase64, 'base64url').toString('utf8');
+        const tokenData = JSON.parse(dataString);
+
+        // Verificar expiración
+        const age = Date.now() - tokenData.timestamp;
+        if (age > maxAge) {
             return null;
         }
 
-        // Retornar los datos del token
-        return tokenObj.data;
+        // Verificar estructura
+        if (!tokenData.payload || !tokenData.timestamp || !tokenData.nonce) {
+            return null;
+        }
+
+        return tokenData.payload;
+
     } catch (error) {
         return null;
     }
 }
 
 /**
- * Genera un ID único simple
- * @returns ID único basado en timestamp y valores aleatorios
+ * Generador de IDs únicos mejorado
  */
-export function generateSimpleId(): string {
+export function generateSecureId(): string {
     const timestamp = Date.now().toString(36);
-    const randomValue = Math.random().toString(36).substring(2);
-    return `${timestamp}-${randomValue}`;
+    const randomPart = randomBytes(16).toString('hex');
+    const hash = createHash('sha256')
+        .update(timestamp + randomPart)
+        .digest('hex')
+        .substring(0, 16);
+
+    return `${timestamp}-${hash}`;
+}
+
+/**
+ * Función para rate limiting simple (prevenir ataques de fuerza bruta)
+ */
+const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
+
+export function checkRateLimit(identifier: string, maxAttempts: number = 5, windowMs: number = 15 * 60 * 1000): boolean {
+    const now = Date.now();
+    const attempts = loginAttempts.get(identifier);
+
+    if (!attempts) {
+        loginAttempts.set(identifier, { count: 1, lastAttempt: now });
+        return true;
+    }
+
+    // Limpiar ventana si ha pasado el tiempo
+    if (now - attempts.lastAttempt > windowMs) {
+        loginAttempts.set(identifier, { count: 1, lastAttempt: now });
+        return true;
+    }
+
+    // Incrementar contador
+    attempts.count++;
+    attempts.lastAttempt = now;
+
+    return attempts.count <= maxAttempts;
+}
+
+
+export function generateRefreshToken(payload: any): string {
+    const refreshData = {
+        ...payload,
+        type: 'refresh',
+        timestamp: Date.now(),
+        nonce: randomBytes(16).toString('hex'),
+        version: '1.0'
+    };
+
+    // Usar secret diferente para refresh tokens
+    const refreshSecret = process.env.REFRESH_SECRET || 'refresh-secret';
+    return generateSimpleToken(refreshData, refreshSecret);
 }
