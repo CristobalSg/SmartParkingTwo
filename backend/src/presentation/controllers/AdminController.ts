@@ -1,8 +1,8 @@
-import { Controller, Post, Body, HttpStatus, HttpException, Inject } from '@nestjs/common';
+import { Controller, Post, Body, HttpStatus, HttpException, Inject, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { AdminLoginUseCase } from '../../application/use-cases/adminUseCases/AdminLoginUseCase';
 import {
     AdminLoginDto,
-    AdminAuthResponseDto,
     ApiResponse
 } from '../dtos/AdminDto';
 import { AdminLoginInput } from '../../application/interfaces/AdminInterfaces';
@@ -20,7 +20,8 @@ export class AdminController {
     ) { }
 
     @Post('login')
-    async login(@Body() loginDto: AdminLoginDto): Promise<ApiResponse<AdminAuthResponseDto>> {
+    async login(@Body() loginDto: AdminLoginDto, @Res() response: Response): Promise<void> {
+        console.log('AdminController.login called with:', JSON.stringify(loginDto, null, 2));
         try {
             // Convert DTO to Application Input
             const input: AdminLoginInput = {
@@ -28,28 +29,28 @@ export class AdminController {
                 password: loginDto.password,
                 tenantUuid: loginDto.tenantUuid || this.tenantContext.getTenantUuid(),
             };
+            console.log('Input to AdminLoginUseCase:', JSON.stringify(input, null, 2));
 
             const authResult = await this.adminLoginUseCase.execute(input);
 
-            // Convert to Response DTO
-            const response: AdminAuthResponseDto = {
-                admin: {
-                    id: authResult.admin.id,
-                    tenantUuid: authResult.admin.tenantUuid,
-                    email: authResult.admin.email,
-                    name: authResult.admin.name,
-                    createdAt: authResult.admin.createdAt,
-                    updatedAt: authResult.admin.updatedAt,
-                },
-                token: authResult.token,
-                expiresAt: authResult.expiresAt,
-            };
+            // Debug temporal - ver qué estructura se está devolviendo
+            console.log('AuthResult structure:', JSON.stringify(authResult, null, 2));
 
-            return {
+            // Headers de seguridad
+            response.setHeader('Cache-Control', 'no-store');
+            response.setHeader('Pragma', 'no-cache');
+            response.setHeader('X-Content-Type-Options', 'nosniff');
+            response.setHeader('X-Frame-Options', 'DENY');
+
+            // Headers informativos
+            response.setHeader('X-Token-Expires', authResult.authentication.expires_at);
+            response.setHeader('X-Rate-Limit-Remaining', '10');
+
+            response.status(200).json({
                 status: 'success',
-                data: response,
+                data: authResult, // Devolver toda la estructura nueva con authentication y session
                 message: 'Login successful'
-            };
+            });
         } catch (error) {
             // Por seguridad, usar un código de estado específico para autenticación fallida
             const statusCode = error.message.includes('Invalid email or password')
