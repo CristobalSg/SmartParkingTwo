@@ -104,7 +104,7 @@ export class Admin {
     }
 
     // Verificar si una contraseña coincide con el hash almacenado
-    async verifyPassword(plainPassword: string): Promise<boolean> {
+    verifyPassword(plainPassword: string): boolean {
         try {
             return verifyPassword(plainPassword, this.passwordHash);
         } catch (error) {
@@ -113,7 +113,7 @@ export class Admin {
     }
 
     // Método estático para crear un hash de contraseña
-    static async hashPassword(plainPassword: string): Promise<string> {
+    static hashPassword(plainPassword: string): string {
         if (!plainPassword || plainPassword.length < 8) {
             throw new Error('Password must be at least 8 characters long');
         }
@@ -130,14 +130,14 @@ export class Admin {
 
         return hashPassword(plainPassword);
     }    // Método estático para crear un nuevo administrador
-    static async create(
+    static create(
         id: string,
         tenantId: string,
         email: string,
         plainPassword: string,
         name: string
-    ): Promise<Admin> {
-        const passwordHash = await Admin.hashPassword(plainPassword);
+    ): Admin {
+        const passwordHash = Admin.hashPassword(plainPassword);
         const now = new Date();
 
         return new Admin(
