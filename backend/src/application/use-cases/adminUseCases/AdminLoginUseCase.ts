@@ -2,7 +2,7 @@ import { AdminRepository } from '../../../core/domain/repositories/AdminReposito
 import { Admin } from '../../../core/domain/entities/Admin';
 import { AdminLoginInput, AdminAuthOutput, AdminOutput } from '../../interfaces/AdminInterfaces';
 import { TenantContext } from '../../../infrastructure/context/TenantContext';
-import { generateSimpleToken } from '../../../shared/utils/crypto-utils';
+import { generateSecureId, generateSimpleToken, generateRefreshToken } from '../../../shared/utils/crypto-utils';
 
 export class AdminLoginUseCase {
     constructor(
@@ -34,7 +34,7 @@ export class AdminLoginUseCase {
         }
 
         // Verificar la contraseña
-        const isPasswordValid = await admin.verifyPassword(input.password);
+        const isPasswordValid = admin.verifyPassword(input.password);
 
         if (!isPasswordValid) {
             throw new Error('Invalid email or password');
@@ -73,25 +73,54 @@ export class AdminLoginUseCase {
     }
 
     private async generateAuthResponse(admin: Admin): Promise<AdminAuthOutput> {
-        // TODO: Implementar generación de JWT token
-        // Por ahora, generar un token simple para propósitos de desarrollo
-        const token = this.generateSimpleToken(admin);
-        const expiresAt = new Date();
-        expiresAt.setHours(expiresAt.getHours() + 24); // Token válido por 24 horas
+        const expiresInSeconds = 24 * 60 * 60; // 24 horas
+        const expiresAt = new Date(Date.now() + (expiresInSeconds * 1000));
+
+        // Generar tokens mejorados
+        const accessToken = this.generateSimpleToken(admin);
+        const refreshToken = generateRefreshToken({
+            adminId: admin.id,
+            tenantId: admin.tenantId,
+            email: admin.email
+        });
 
         return {
             admin: this.mapToAdminOutput(admin),
-            token,
-            expiresAt
+            authentication: {
+                access_token: accessToken,
+                token_type: "Bearer",
+                expires_in: expiresInSeconds,
+                expires_at: expiresAt.toISOString(),
+                scope: this.getAdminScope(admin),
+                refresh_token: refreshToken
+            },
+            session: {
+                session_id: generateSecureId(),
+                login_time: new Date().toISOString(),
+                // ip_address se puede capturar del request
+            }
         };
+    }
+
+    private getAdminScope(admin: Admin): string {
+        // Definir scope basado en el rol del admin y su tenant
+        const baseScope = "admin:full read:all write:all";
+        const tenantScope = `tenant:${admin.tenantId}`;
+        return `${baseScope} ${tenantScope}`;
     }
 
     private generateSimpleToken(admin: Admin): string {
         // Usar la nueva utilidad crypto para generar tokens
         const payload = {
-            adminId: admin.id,
+            sub: admin.id,
             tenantId: admin.tenantId,
             email: admin.email,
+            role: "admin",
+            permission: ["read", "write", "admin"],
+            iat: Math.floor(Date.now() / 1000),
+            exp: Math.floor(Date.now() / 1000) + 86400,
+            jti: generateSecureId(),
+            scope: "admin:full"
         };
 
         return generateSimpleToken(payload);

@@ -41,8 +41,12 @@ export interface AdminLoginInput {
 
 export interface AdminAuthOutput {
     admin: AdminOutput;
-    token: string;
-    expiresAt: Date;
+    authentication: TokenResponse;
+    session?: {
+        session_id: string;
+        login_time: string;
+        ip_address?: string;
+    };
 }
 
 // Interfaces para gestión de tenants (solo para super admin)
@@ -214,4 +218,15 @@ export interface AdminParkingFilters {
     specialType?: 'regular' | 'disabled' | 'pregnant' | 'electric' | 'visitor';
     isActive?: boolean;
     isOccupied?: boolean;
+}
+
+
+export interface TokenResponse {
+    access_token: string;
+    token_type: "Bearer";
+    expires_in: number;
+    expires_at: string;
+    scope: string;
+    refresh_token?: string;
+
 }
