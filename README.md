@@ -147,15 +147,34 @@ docker-compose up database -d
 
 ```
 SmartParkingTwo/
-├── frontend/                    # React TypeScript App
-│   ├── src/
-│   │   ├── components/         # Componentes React reutilizables
-│   │   ├── pages/             # Páginas principales de la aplicación  
-│   │   ├── services/          # Servicios API y utilidades
-│   │   └── types/             # Tipos TypeScript
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── Dockerfile
+```
+frontend/src/
+├── 🎯 CORE (Centro - Lógica de Negocio)
+│   ├── models/           # Entidades del dominio
+│   └── contexts/         # Estado global de la aplicación
+│
+├── 🔄 APPLICATION (Casos de Uso)
+│   ├── hooks/            # Lógica de aplicación reutilizable
+│   ├── services/         # Casos de uso de negocio
+│   └── utilities/        # Funciones puras de dominio
+│
+├── 🔌 INFRASTRUCTURE (Adaptadores)
+│   ├── adapters/         # Transformación de datos
+│   ├── interceptors/     # Middleware de comunicación
+│   └── redux/           # Estado persistente (opcional)
+│
+├── 🎨 PRESENTATION (UI)
+│   ├── components/       # Componentes de interfaz
+│   ├── pages/           # Vistas principales
+│   └── styled-components/ # Estilos encapsulados
+│
+└── 📱 ENTRY POINTS
+    ├── App.tsx          # Configuración principal
+    └── index.tsx        # Punto de entrada
+├── package.json
+├── tsconfig.json
+└── Dockerfile
+```
 │
 ├── backend/                     # Node.js Express API
 │   ├── src/

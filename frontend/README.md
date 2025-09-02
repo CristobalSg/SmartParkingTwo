@@ -10,35 +10,35 @@ Esta es la aplicación frontend del sistema de parking universitario, desarrolla
 - **Axios** - Cliente HTTP para API calls
 - **CSS Modules** - Estilos modulares
 
-## 📁 Estructura del Proyecto (Clean Arquitecture FRONTEND)
+## 📁 Estructura del Proyecto (FRONTEND)
 
 ```
-frontend/src/
-├── 🎯 CORE (Centro - Lógica de Negocio)
-│   ├── models/           # Entidades del dominio
-│   └── contexts/         # Estado global de la aplicación
-│
-├── 🔄 APPLICATION (Casos de Uso)
-│   ├── hooks/            # Lógica de aplicación reutilizable
-│   ├── services/         # Casos de uso de negocio
-│   └── utilities/        # Funciones puras de dominio
-│
-├── 🔌 INFRASTRUCTURE (Adaptadores)
-│   ├── adapters/         # Transformación de datos
-│   ├── interceptors/     # Middleware de comunicación
-│   └── redux/           # Estado persistente (opcional)
-│
-├── 🎨 PRESENTATION (UI)
-│   ├── components/       # Componentes de interfaz
-│   ├── pages/           # Vistas principales
-│   └── styled-components/ # Estilos encapsulados
-│
-└── 📱 ENTRY POINTS
-    ├── App.tsx          # Configuración principal
-    └── index.tsx        # Punto de entrada
-├── package.json
-├── tsconfig.json
-└── Dockerfile
+src/
+├── application/          # Capa de Aplicación
+│   ├── use-cases/       # Casos de uso específicos
+│   ├── ports/           # Interfaces/contratos
+│   └── services/        # Servicios de aplicación
+├── domain/              # Capa de Dominio (corazón)
+│   ├── entities/        # Entidades de negocio
+│   ├── value-objects/   # Objetos de valor
+│   └── repositories/    # Interfaces de repositorios
+├── infrastructure/      # Capa de Infraestructura
+│   ├── api/            # Adaptadores para APIs
+│   ├── repositories/   # Implementaciones de repositorios
+│   ├── storage/        # LocalStorage, SessionStorage
+│   └── http/           # Configuración de HTTP
+├── presentation/        # Capa de Presentación
+│   ├── components/     # Componentes reutilizables
+│   ├── pages/          # Páginas/vistas principales
+│   ├── hooks/          # Hooks personalizados
+│   ├── contexts/       # Context API de React
+│   └── styles/         # Estilos y temas
+├── shared/             # Código compartido
+│   ├── types/          # Tipos TypeScript globales
+│   ├── constants/      # Constantes
+│   └── utils/          # Utilidades
+├── App.tsx
+└── index.tsx
 ```
 
 ## 🎯 Funcionalidades Principales
