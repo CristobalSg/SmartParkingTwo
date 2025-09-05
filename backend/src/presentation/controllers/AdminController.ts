@@ -1,21 +1,30 @@
-import { Controller, Post, Body, HttpStatus, HttpException, Inject, Res } from '@nestjs/common';
+import { Controller, Post, Body, Get, HttpStatus, HttpException, Inject, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { AdminLoginUseCase } from '../../application/use-cases/adminUseCases/AdminLoginUseCase';
 import {
     AdminLoginDto,
-    ApiResponse
+    ApiResponse,
+    CreateAdminDto
 } from '../dtos/AdminDto';
-import { AdminLoginInput } from '../../application/interfaces/AdminInterfaces';
+import { AdminLoginInput, CreateAdminInput } from '../../application/interfaces/AdminInterfaces';
 import { TenantContext } from '../../infrastructure/context/TenantContext';
 import { validateSimpleToken } from '../../shared/utils/crypto-utils';
+import { CreateAdminUseCase } from '../../application/use-cases/adminUseCases/CreateAdminUseCase';
+import { GetAllAdminsUseCase } from '../../application/use-cases/adminUseCases/GetAllAdminUseCase';
 
 export const ADMIN_LOGIN_USE_CASE_TOKEN = 'ADMIN_LOGIN_USE_CASE_TOKEN';
+export const CREATE_ADMIN_USE_CASE_TOKEN = 'CREATE_ADMIN_USE_CASE_TOKEN'
+export const GET_ALL_ADMINS_USE_CASE_TOKEN = 'GET_ALL_ADMINS_USE_CASE_TOKEN'
 
 @Controller('api/admin')
 export class AdminController {
     constructor(
         @Inject(ADMIN_LOGIN_USE_CASE_TOKEN)
         private readonly adminLoginUseCase: AdminLoginUseCase,
+        @Inject(CREATE_ADMIN_USE_CASE_TOKEN)
+        private readonly createAdminUseCase: CreateAdminUseCase,
+        @Inject(GET_ALL_ADMINS_USE_CASE_TOKEN)
+        private readonly getAllAdminUseCase: GetAllAdminsUseCase,
         private readonly tenantContext: TenantContext
     ) { }
 
@@ -64,6 +73,62 @@ export class AdminController {
                     error: error.message
                 },
                 statusCode
+            );
+        }
+    }
+
+    //Crear Admins
+
+    @Post()
+    async create(@Body() createDto: CreateAdminDto): Promise<ApiResponse<any>> {
+        try {
+            const tenantUuid = this.tenantContext.requireTenant().id
+            const input: CreateAdminInput = {
+                tenantUuid: tenantUuid,
+                email: createDto.email,
+                password: createDto.password,
+                name: createDto.name,
+            };
+
+            const admin = await this.createAdminUseCase.execute(input);
+
+            return {
+                status: 'success',
+                data: admin,
+                message: 'Administrator created successfully'
+            };
+        } catch (error) {
+            throw new HttpException(
+                {
+                    status: 'error',
+                    message: 'Failed to create administrator',
+                    error: error.message
+                },
+                HttpStatus.BAD_REQUEST
+            );
+        }
+    }
+
+    //Obtener todos los Admins
+
+    @Get()
+    async getAll(): Promise<ApiResponse<any[]>> {
+        try {
+            const admins = await this.getAllAdminUseCase.execute()
+
+            return {
+                status: 'success',
+                data: admins,
+                message: 'Administrators retrieved successfully'
+            };
+        } catch (error) {
+            throw new HttpException(
+                {
+                    status: 'error',
+                    message: 'Failed to retrieve administrators',
+                    error: error.message
+                },
+                HttpStatus.BAD_REQUEST
             );
         }
     }
