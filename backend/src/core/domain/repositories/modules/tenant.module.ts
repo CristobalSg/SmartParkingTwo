@@ -1,7 +1,7 @@
 import { Module, Global } from '@nestjs/common';
-import { TenantContext } from '../context/TenantContext';
-import { PrismaTenantRepository } from '../repositories/PrismaTenantRepository';
-import { PrismaModule } from '../database/prisma.module';
+import { TenantContext } from '@infrastructure/context/TenantContext';
+import { PrismaTenantRepository } from '@infrastructure/repositories/PrismaTenantRepository';
+import { PrismaModule } from '@infrastructure/database/prisma.module';
 
 @Global() // ← Hace que este módulo esté disponible globalmente
 @Module({

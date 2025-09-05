@@ -58,7 +58,7 @@ export class TenantMiddleware implements NestMiddleware {
             // --- Cargar el Tenant de la base
             if (tenantId) {
                 const tenant = await this.tenantRepository.findByTenantId(tenantId);
-
+                this.logger.log(`Tenant ${tenant.tenantId.toString()} loaded from repository`);
                 if (!tenant) {
                     throw new BadRequestException({
                         message: 'Tenant not found',
@@ -77,6 +77,7 @@ export class TenantMiddleware implements NestMiddleware {
                 req.tenant = tenantId;
                 // Guardar en contexto
                 this.tenantContext.setTenant(tenant);
+                this.logger.log(`Tenant ${this.tenantContext.requireTenant().tenantId.toString()} loaded and set in context`);
             }
 
             next();
