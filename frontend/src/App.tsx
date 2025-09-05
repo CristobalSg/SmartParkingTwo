@@ -1,25 +1,14 @@
-import React from 'react';
-
-// Componente principal de la aplicación
-const AppContent: React.FC = () => {
-
-  return (
-    <div className="App">
-      <header>
-        <h1>Smart Parking System</h1>
-      </header>
-      <main>
-          <div>
-            <p>Dashboard del sistema de estacionamiento</p>
-          </div>
-      </main>
-    </div>
-  );
-};
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import LoginPage from "./presentation/pages/LoginPage";
 
 function App() {
   return (
-      <AppContent />
+    <Router>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        {/* Aquí irán más rutas, como /dashboard, /profile, etc. */}
+      </Routes>
+    </Router>
   );
 }
 
