@@ -11,9 +11,11 @@ export class CreateAdminUseCase {
     ) { }
 
     async execute(input: CreateAdminInput): Promise<AdminOutput> {
-        // Validar que el tenant exista y esté activo
-        this.tenantContext.requireTenant();
+        const contextTenant = this.tenantContext.requireTenant();
 
+        if (input.tenantUuid !== contextTenant.id) {
+            throw new Error('Tenant mismatch: Cannot create admin for different tenant');
+        }
         // Validar input
         this.validateInput(input);
 
@@ -23,10 +25,9 @@ export class CreateAdminUseCase {
             throw new Error('Administrator with this email already exists in this tenant');
         }
 
-        const adminId = randomUUID();
         // Crear nueva entidad Admin
         const admin = Admin.create(
-            adminId,
+            randomUUID(),
             input.tenantUuid,
             input.email,
             input.password,

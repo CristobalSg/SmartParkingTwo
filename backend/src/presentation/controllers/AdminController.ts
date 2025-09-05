@@ -77,8 +77,9 @@ export class AdminController {
     @Post()
     async create(@Body() createDto: CreateAdminDto): Promise<ApiResponse<any>> {
         try {
+            const tenantUuid = this.tenantContext.requireTenant().id
             const input: CreateAdminInput = {
-                tenantUuid: createDto.tenantUuid,
+                tenantUuid: tenantUuid,
                 email: createDto.email,
                 password: createDto.password,
                 name: createDto.name,
