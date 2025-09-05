@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpStatus, HttpException, Inject, Res } from '@nestjs/common';
+import { Controller, Post, Body, Get, HttpStatus, HttpException, Inject, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { AdminLoginUseCase } from '../../application/use-cases/adminUseCases/AdminLoginUseCase';
 import {
@@ -10,9 +10,12 @@ import { AdminLoginInput, CreateAdminInput } from '../../application/interfaces/
 import { TenantContext } from '../../infrastructure/context/TenantContext';
 import { validateSimpleToken } from '../../shared/utils/crypto-utils';
 import { CreateAdminUseCase } from '../../application/use-cases/adminUseCases/CreateAdminUseCase';
+import { GetAllAdminsUseCase } from '../../application/use-cases/adminUseCases/GetAllAdminUseCase';
 
 export const ADMIN_LOGIN_USE_CASE_TOKEN = 'ADMIN_LOGIN_USE_CASE_TOKEN';
 export const CREATE_ADMIN_USE_CASE_TOKEN = 'CREATE_ADMIN_USE_CASE_TOKEN'
+export const GET_ALL_ADMINS_USE_CASE_TOKEN = 'GET_ALL_ADMINS_USE_CASE_TOKEN'
+
 @Controller('api/admin')
 export class AdminController {
     constructor(
@@ -20,6 +23,8 @@ export class AdminController {
         private readonly adminLoginUseCase: AdminLoginUseCase,
         @Inject(CREATE_ADMIN_USE_CASE_TOKEN)
         private readonly createAdminUseCase: CreateAdminUseCase,
+        @Inject(GET_ALL_ADMINS_USE_CASE_TOKEN)
+        private readonly getAllAdminUseCase: GetAllAdminsUseCase,
         private readonly tenantContext: TenantContext
     ) { }
 
@@ -72,7 +77,7 @@ export class AdminController {
         }
     }
 
-    //Crear Admins - TEMPORALMENTE DESHABILITADO
+    //Crear Admins
 
     @Post()
     async create(@Body() createDto: CreateAdminDto): Promise<ApiResponse<any>> {
@@ -104,6 +109,29 @@ export class AdminController {
         }
     }
 
+    //Obtener todos los Admins
+
+    @Get()
+    async getAll(): Promise<ApiResponse<any[]>> {
+        try {
+            const admins = await this.getAllAdminUseCase.execute()
+
+            return {
+                status: 'success',
+                data: admins,
+                message: 'Administrators retrieved successfully'
+            };
+        } catch (error) {
+            throw new HttpException(
+                {
+                    status: 'error',
+                    message: 'Failed to retrieve administrators',
+                    error: error.message
+                },
+                HttpStatus.BAD_REQUEST
+            );
+        }
+    }
 
     // Endpoint para validar token (opcional)
     @Post('validate-token')
