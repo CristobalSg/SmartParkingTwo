@@ -5,8 +5,23 @@ CREATE TYPE "ParkingSpecialType" AS ENUM ('regular', 'disabled', 'pregnant', 'el
 CREATE TYPE "ReservationStatus" AS ENUM ('pending', 'confirmed', 'active', 'completed', 'cancelled', 'expired');
 
 -- CreateTable
+CREATE TABLE "tenants" (
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "tenant_id" VARCHAR(50) NOT NULL,
+    "name" VARCHAR(255) NOT NULL,
+    "domain" VARCHAR(255) NOT NULL,
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "settings" JSONB,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "tenants_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "administrators" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL,
     "email" VARCHAR(255) NOT NULL,
     "password_hash" VARCHAR(255) NOT NULL,
     "name" VARCHAR(255) NOT NULL,
@@ -19,6 +34,7 @@ CREATE TABLE "administrators" (
 -- CreateTable
 CREATE TABLE "users" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL,
     "email" VARCHAR(255) NOT NULL,
     "name" VARCHAR(255) NOT NULL,
     "email_verified" BOOLEAN NOT NULL DEFAULT false,
@@ -32,6 +48,7 @@ CREATE TABLE "users" (
 -- CreateTable
 CREATE TABLE "parking_zones" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "tenant_id" UUID NOT NULL,
     "name" VARCHAR(255) NOT NULL,
     "description" TEXT,
     "capacity" INTEGER NOT NULL,
@@ -68,13 +85,31 @@ CREATE TABLE "reservations" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "administrators_email_key" ON "administrators"("email");
+CREATE UNIQUE INDEX "tenants_tenant_id_key" ON "tenants"("tenant_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+CREATE UNIQUE INDEX "tenants_domain_key" ON "tenants"("domain");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "administrators_tenant_id_email_key" ON "administrators"("tenant_id", "email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_tenant_id_email_key" ON "users"("tenant_id", "email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "parking_zones_tenant_id_name_key" ON "parking_zones"("tenant_id", "name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "parking_spaces_zone_id_space_number_key" ON "parking_spaces"("zone_id", "space_number");
+
+-- AddForeignKey
+ALTER TABLE "administrators" ADD CONSTRAINT "administrators_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "users" ADD CONSTRAINT "users_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "parking_zones" ADD CONSTRAINT "parking_zones_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "parking_spaces" ADD CONSTRAINT "parking_spaces_zone_id_fkey" FOREIGN KEY ("zone_id") REFERENCES "parking_zones"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { UserController } from '../../presentation/controllers/UserController';
-import { UserApplicationService } from '../../application/services/UserApplicationService';
-import { PrismaModule } from '../database/prisma.module';
-import { PrismaUserRepository } from '../repositories/PrismaUserRepository';
-import { PrismaTenantRepository } from '../repositories/PrismaTenantRepository';
-import { TenantContext } from '../context/TenantContext';
+import { UserController } from '../../../../presentation/controllers/UserController';
+import { UserApplicationService } from '../../../../application/services/UserApplicationService';
+import { PrismaModule } from '@infrastructure/database/prisma.module';
+import { PrismaUserRepository } from '@infrastructure/repositories/PrismaUserRepository';
+import { PrismaTenantRepository } from '@infrastructure/repositories/PrismaTenantRepository';
+import { TenantContext } from '@infrastructure/context/TenantContext';
 
 export const USER_REPOSITORY_TOKEN = 'USER_REPOSITORY_TOKEN';
 export const TENANT_REPOSITORY_TOKEN = 'TENANT_REPOSITORY_TOKEN';
@@ -29,7 +29,7 @@ export const USER_APPLICATION_SERVICE_TOKEN = 'USER_APPLICATION_SERVICE_TOKEN';
             useFactory: (userRepository, tenantContext) => {
                 return new UserApplicationService(userRepository, tenantContext);
             },
-            inject: [USER_REPOSITORY_TOKEN, TenantContext],
+            inject: [USER_REPOSITORY_TOKEN, TenantContext], // ← Usar la clase directamente
         },
     ],
     exports: [USER_APPLICATION_SERVICE_TOKEN],
