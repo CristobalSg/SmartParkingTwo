@@ -29,7 +29,7 @@ export class AdminRepositoryFactory {
     // Crear cliente HTTP con inyección de dependencias
     const httpClient = createHttpClient(
       {
-        baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3001/api',
+        baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3000/api',
         timeout: 15000,
       },
       errorHandler,

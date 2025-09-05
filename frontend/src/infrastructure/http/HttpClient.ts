@@ -143,6 +143,6 @@ export const createHttpClient = (
 
 // Cliente por defecto para mantener compatibilidad
 export const httpClient = new HttpClient({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3001/api',
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3000/api',
   timeout: 15000,
 });
