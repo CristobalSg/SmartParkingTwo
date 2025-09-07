@@ -1,22 +1,25 @@
-import { Controller, Post, Body, Get, HttpStatus, HttpException, Inject, Res, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, HttpStatus, HttpException, Inject, Res, Param, Put } from '@nestjs/common';
 import { Response } from 'express';
 import { AdminLoginUseCase } from '../../application/use-cases/adminUseCases/AdminLoginUseCase';
 import {
     AdminLoginDto,
     ApiResponse,
-    CreateAdminDto
+    CreateAdminDto,
+    UpdateAdminDto
 } from '../dtos/AdminDto';
-import { AdminLoginInput, CreateAdminInput } from '../../application/interfaces/AdminInterfaces';
+import { AdminLoginInput, CreateAdminInput, UpdateAdminInput } from '../../application/interfaces/AdminInterfaces';
 import { TenantContext } from '../../infrastructure/context/TenantContext';
 import { validateSimpleToken } from '../../shared/utils/crypto-utils';
 import { CreateAdminUseCase } from '../../application/use-cases/adminUseCases/CreateAdminUseCase';
 import { GetAllAdminsUseCase } from '../../application/use-cases/adminUseCases/GetAllAdminUseCase';
 import { GetAdminByIdUseCase } from '../../application/use-cases/adminUseCases/GetAdminByIdUseCase';
+import { UpdateAdminUseCase } from '../../application/use-cases/adminUseCases/UpdateAdminUseCase';
 
 export const ADMIN_LOGIN_USE_CASE_TOKEN = 'ADMIN_LOGIN_USE_CASE_TOKEN'
 export const CREATE_ADMIN_USE_CASE_TOKEN = 'CREATE_ADMIN_USE_CASE_TOKEN'
 export const GET_ALL_ADMINS_USE_CASE_TOKEN = 'GET_ALL_ADMINS_USE_CASE_TOKEN'
 export const GET_ADMIN_BY_ID_USE_CASE_TOKEN = 'GET_ADMIN_BY_ID_USE_CASE_TOKEN'
+export const UPDATE_ADMIN_USE_CASE_TOKEN = 'UPDATE_ADMIN_USE_CASE_TOKEN'
 
 @Controller('api/admin')
 export class AdminController {
@@ -29,6 +32,8 @@ export class AdminController {
         private readonly getAllAdminUseCase: GetAllAdminsUseCase,
         @Inject(GET_ADMIN_BY_ID_USE_CASE_TOKEN)
         private readonly getAdminByIdUseCase: GetAdminByIdUseCase,
+        @Inject(UPDATE_ADMIN_USE_CASE_TOKEN)
+        private readonly updateAdminUseCase: UpdateAdminUseCase,
         private readonly tenantContext: TenantContext
     ) { }
 
@@ -160,6 +165,37 @@ export class AdminController {
                 {
                     status: 'error',
                     message: 'Failed to retrieve administrators',
+                    error: error.message
+                },
+                statusCode
+            );
+        }
+    }
+
+    @Put(':id')
+    async update(@Param('id') id: string, @Body() updateDto: UpdateAdminDto): Promise<ApiResponse<any>> {
+        try {
+            const input: UpdateAdminInput = {
+                email: updateDto.email,
+                name: updateDto.name,
+            };
+
+            const admin = await this.updateAdminUseCase.execute(id, input);
+
+            return {
+                status: 'success',
+                data: admin,
+                message: 'Administrator updated successfully'
+            };
+        } catch (error) {
+            const statusCode = error.message === 'Administrator not found'
+                ? HttpStatus.NOT_FOUND
+                : HttpStatus.BAD_REQUEST;
+
+            throw new HttpException(
+                {
+                    status: 'error',
+                    message: 'Failed to update administrator',
                     error: error.message
                 },
                 statusCode
