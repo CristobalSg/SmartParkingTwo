@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, HttpStatus, HttpException, Inject, Res } from '@nestjs/common';
+import { Controller, Post, Body, Get, HttpStatus, HttpException, Inject, Res, Param } from '@nestjs/common';
 import { Response } from 'express';
 import { AdminLoginUseCase } from '../../application/use-cases/adminUseCases/AdminLoginUseCase';
 import {
@@ -11,10 +11,12 @@ import { TenantContext } from '../../infrastructure/context/TenantContext';
 import { validateSimpleToken } from '../../shared/utils/crypto-utils';
 import { CreateAdminUseCase } from '../../application/use-cases/adminUseCases/CreateAdminUseCase';
 import { GetAllAdminsUseCase } from '../../application/use-cases/adminUseCases/GetAllAdminUseCase';
+import { GetAdminByIdUseCase } from '../../application/use-cases/adminUseCases/GetAdminByIdUseCase';
 
-export const ADMIN_LOGIN_USE_CASE_TOKEN = 'ADMIN_LOGIN_USE_CASE_TOKEN';
+export const ADMIN_LOGIN_USE_CASE_TOKEN = 'ADMIN_LOGIN_USE_CASE_TOKEN'
 export const CREATE_ADMIN_USE_CASE_TOKEN = 'CREATE_ADMIN_USE_CASE_TOKEN'
 export const GET_ALL_ADMINS_USE_CASE_TOKEN = 'GET_ALL_ADMINS_USE_CASE_TOKEN'
+export const GET_ADMIN_BY_ID_USE_CASE_TOKEN = 'GET_ADMIN_BY_ID_USE_CASE_TOKEN'
 
 @Controller('api/admin')
 export class AdminController {
@@ -25,6 +27,8 @@ export class AdminController {
         private readonly createAdminUseCase: CreateAdminUseCase,
         @Inject(GET_ALL_ADMINS_USE_CASE_TOKEN)
         private readonly getAllAdminUseCase: GetAllAdminsUseCase,
+        @Inject(GET_ADMIN_BY_ID_USE_CASE_TOKEN)
+        private readonly getAdminByIdUseCase: GetAdminByIdUseCase,
         private readonly tenantContext: TenantContext
     ) { }
 
@@ -129,6 +133,36 @@ export class AdminController {
                     error: error.message
                 },
                 HttpStatus.BAD_REQUEST
+            );
+        }
+    }
+
+
+    //Obtener Admin por id
+
+    @Get(':id')
+    async getById(@Param('id') id: string): Promise<ApiResponse<any>> {
+        try {
+            const admin = await this.getAdminByIdUseCase.execute(id)
+
+            return {
+                status: 'success',
+                data: admin,
+                message: 'Administrators retrieved successfully'
+            };
+        } catch (error) {
+            const statusCode = error.message === 'Administrator not found'
+
+                ? HttpStatus.NOT_FOUND
+                : HttpStatus.BAD_REQUEST;
+
+            throw new HttpException(
+                {
+                    status: 'error',
+                    message: 'Failed to retrieve administrators',
+                    error: error.message
+                },
+                statusCode
             );
         }
     }
