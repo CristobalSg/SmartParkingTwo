@@ -4,22 +4,25 @@ import { AdminLoginUseCase } from '../../application/use-cases/adminUseCases/Adm
 import {
     AdminLoginDto,
     ApiResponse,
+    ChangeAdminPasswordDto,
     CreateAdminDto,
     UpdateAdminDto
 } from '../dtos/AdminDto';
-import { AdminLoginInput, CreateAdminInput, UpdateAdminInput } from '../../application/interfaces/AdminInterfaces';
+import { AdminLoginInput, ChangeAdminPasswordInput, CreateAdminInput, UpdateAdminInput } from '../../application/interfaces/AdminInterfaces';
 import { TenantContext } from '../../infrastructure/context/TenantContext';
 import { validateSimpleToken } from '../../shared/utils/crypto-utils';
 import { CreateAdminUseCase } from '../../application/use-cases/adminUseCases/CreateAdminUseCase';
 import { GetAllAdminsUseCase } from '../../application/use-cases/adminUseCases/GetAllAdminUseCase';
 import { GetAdminByIdUseCase } from '../../application/use-cases/adminUseCases/GetAdminByIdUseCase';
 import { UpdateAdminUseCase } from '../../application/use-cases/adminUseCases/UpdateAdminUseCase';
+import { ChangeAdminPasswordUseCase } from '../../application/use-cases/adminUseCases/ChangeAdminPasswordUseCase';
 
 export const ADMIN_LOGIN_USE_CASE_TOKEN = 'ADMIN_LOGIN_USE_CASE_TOKEN'
 export const CREATE_ADMIN_USE_CASE_TOKEN = 'CREATE_ADMIN_USE_CASE_TOKEN'
 export const GET_ALL_ADMINS_USE_CASE_TOKEN = 'GET_ALL_ADMINS_USE_CASE_TOKEN'
 export const GET_ADMIN_BY_ID_USE_CASE_TOKEN = 'GET_ADMIN_BY_ID_USE_CASE_TOKEN'
 export const UPDATE_ADMIN_USE_CASE_TOKEN = 'UPDATE_ADMIN_USE_CASE_TOKEN'
+export const CHANGE_ADMIN_PASSWORD_USE_CASE_TOKEN = 'CHANGE_ADMIN_PASSWORD_USE_CASE_TOKEN'
 
 @Controller('api/admin')
 export class AdminController {
@@ -34,6 +37,8 @@ export class AdminController {
         private readonly getAdminByIdUseCase: GetAdminByIdUseCase,
         @Inject(UPDATE_ADMIN_USE_CASE_TOKEN)
         private readonly updateAdminUseCase: UpdateAdminUseCase,
+        @Inject(CHANGE_ADMIN_PASSWORD_USE_CASE_TOKEN)
+        private readonly changeAdminPasswordUseCase: ChangeAdminPasswordUseCase,
         private readonly tenantContext: TenantContext
     ) { }
 
@@ -196,6 +201,37 @@ export class AdminController {
                 {
                     status: 'error',
                     message: 'Failed to update administrator',
+                    error: error.message
+                },
+                statusCode
+            );
+        }
+    }
+
+    @Put(':id/change-password')
+    async changePassword(@Param('id') id: string, @Body() changePasswordDto: ChangeAdminPasswordDto): Promise<ApiResponse<null>> {
+        try {
+            const input: ChangeAdminPasswordInput = {
+                currentPassword: changePasswordDto.currentPassword,
+                newPassword: changePasswordDto.newPassword,
+            };
+
+            await this.changeAdminPasswordUseCase.execute(id, input);
+
+            return {
+                status: 'success',
+                data: null,
+                message: 'Password changed successfully'
+            };
+        } catch (error) {
+            const statusCode = error.message === 'Administrator not found'
+                ? HttpStatus.NOT_FOUND
+                : HttpStatus.BAD_REQUEST;
+
+            throw new HttpException(
+                {
+                    status: 'error',
+                    message: 'Failed to change password',
                     error: error.message
                 },
                 statusCode
