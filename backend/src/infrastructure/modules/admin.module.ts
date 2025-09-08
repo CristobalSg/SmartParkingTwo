@@ -9,6 +9,7 @@ import { TenantContext } from '../context/TenantContext';
 import { GetAllAdminsUseCase } from '../../application/use-cases/adminUseCases/GetAllAdminUseCase';
 import { GetAdminByIdUseCase } from '../../application/use-cases/adminUseCases/GetAdminByIdUseCase';
 import { UpdateAdminUseCase } from '../../application/use-cases/adminUseCases/UpdateAdminUseCase';
+import { ChangeAdminPasswordUseCase } from '../../application/use-cases/adminUseCases/ChangeAdminPasswordUseCase';
 
 export const ADMIN_REPOSITORY_TOKEN = 'ADMIN_REPOSITORY_TOKEN';
 export const ADMIN_LOGIN_USE_CASE_TOKEN = 'ADMIN_LOGIN_USE_CASE_TOKEN';
@@ -16,6 +17,7 @@ export const CREATE_ADMIN_USE_CASE_TOKEN = 'CREATE_ADMIN_USE_CASE_TOKEN';
 export const GET_ALL_ADMINS_USE_CASE_TOKEN = 'GET_ALL_ADMINS_USE_CASE_TOKEN';
 export const GET_ADMIN_BY_ID_USE_CASE_TOKEN = 'GET_ADMIN_BY_ID_USE_CASE_TOKEN';
 export const UPDATE_ADMIN_USE_CASE_TOKEN = 'UPDATE_ADMIN_USE_CASE_TOKEN'
+export const CHANGE_ADMIN_PASSWORD_USE_CASE_TOKEN = 'CHANGE_ADMIN_PASSWORD_USE_CASE_TOKEN';
 
 @Module({
     imports: [PrismaModule, TenantModule],
@@ -72,6 +74,14 @@ export const UPDATE_ADMIN_USE_CASE_TOKEN = 'UPDATE_ADMIN_USE_CASE_TOKEN'
             inject: [ADMIN_REPOSITORY_TOKEN, TenantContext],
 
         },
+        // Change password use case
+        {
+            provide: CHANGE_ADMIN_PASSWORD_USE_CASE_TOKEN,
+            useFactory: (adminRepository, tenantContext) => {
+                return new ChangeAdminPasswordUseCase(adminRepository, tenantContext);
+            },
+            inject: [ADMIN_REPOSITORY_TOKEN, TenantContext],
+        },
     ],
     exports: [
         ADMIN_REPOSITORY_TOKEN,
@@ -79,7 +89,8 @@ export const UPDATE_ADMIN_USE_CASE_TOKEN = 'UPDATE_ADMIN_USE_CASE_TOKEN'
         CREATE_ADMIN_USE_CASE_TOKEN,
         GET_ALL_ADMINS_USE_CASE_TOKEN,
         GET_ADMIN_BY_ID_USE_CASE_TOKEN,
-        UPDATE_ADMIN_USE_CASE_TOKEN
+        UPDATE_ADMIN_USE_CASE_TOKEN,
+        CHANGE_ADMIN_PASSWORD_USE_CASE_TOKEN
     ],
 })
 export class AdminModule { }
