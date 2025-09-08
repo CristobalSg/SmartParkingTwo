@@ -57,6 +57,15 @@ export class PrismaAdminRepository implements AdminRepository {
         return admin ? this.mapToEntity(admin) : null;
     }
 
+    // Ejemplo ilustrativo en PrismaAdminRepository
+    async findByIdForAuth(id: string, tenantId: string): Promise<Admin | null> {
+        const row = await this.prisma.administrator.findFirst({
+            where: { id, tenantId },
+            select: { id: true, tenantId: true, email: true, name: true, passwordHash: true, createdAt: true, updatedAt: true }
+        });
+        return row ? this.mapToEntity(row) : null;
+    }
+
     async update(
         id: string,
         tenantId: string,
