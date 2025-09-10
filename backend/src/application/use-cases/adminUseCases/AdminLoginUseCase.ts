@@ -1,8 +1,8 @@
-import { AdminRepository } from '../../../core/domain/repositories/AdminRepository';
-import { Admin } from '../../../core/domain/entities/Admin';
+import { AdminRepository } from '@/core/domain/repositories/AdminRepository';
+import { Admin } from '@/core/domain/entities/Admin';
 import { AdminLoginInput, AdminAuthOutput, AdminOutput } from '../../interfaces/AdminInterfaces';
-import { TenantContext } from '../../../infrastructure/context/TenantContext';
-import { generateSecureId, generateSimpleToken, generateRefreshToken } from '../../../shared/utils/crypto-utils';
+import { TenantContext } from '@/infrastructure/context/TenantContext';
+import { generateSecureId, generateSimpleToken, generateRefreshToken } from '@/shared/utils/crypto-utils';
 
 export class AdminLoginUseCase {
     constructor(
