@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 import styles from "./LoginForm.module.css";
-import { LoginUser } from "../../../application/use-cases/loginUser";
-import { AuthRepositoryImpl } from "../../../infrastructure/repositories/AuthRepositoryImpl";
+import { ApiAdminRepository } from "../../../infrastructure/repositories/ApiAdminRepository";
+import { AdminApiAdapter } from "../../../infrastructure/api/AdminApiAdapter";
+import { httpClient } from "../../../infrastructure/http/HttpClient";
+import { LocalStorageTokenStorage } from "../../../infrastructure/storage/TokenStorage";
+import { API_CONFIG, AUTH_CONFIG } from "../../../shared/constants/config";
 
 const LoginForm: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -9,7 +12,11 @@ const LoginForm: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const loginUseCase = new LoginUser(new AuthRepositoryImpl());
+  // Construir repositorio admin usando adaptador HTTP e storage
+  const adminRepo = new ApiAdminRepository(
+    new AdminApiAdapter(httpClient),
+    new LocalStorageTokenStorage(AUTH_CONFIG.TOKEN_KEY)
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,10 +24,12 @@ const LoginForm: React.FC = () => {
     setError(null);
 
     try {
-      await loginUseCase.execute(email, password);
-      console.log("Redirect to dashboard...");
+      // Usar tenant por defecto desde la configuración
+      const tenantId = API_CONFIG.DEFAULT_TENANT;
+      await adminRepo.login({ email, password }, tenantId);
+      console.log("Login successful — redirect to dashboard...");
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
