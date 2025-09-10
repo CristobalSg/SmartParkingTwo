@@ -1,7 +1,7 @@
-import { AdminRepository } from '../../../core/domain/repositories/AdminRepository';
-import { Admin } from "../../../core/domain/entities/Admin";
+import { AdminRepository } from '@/core/domain/repositories/AdminRepository';
+import { Admin } from "@/core/domain/entities/Admin";
 import { ChangeAdminPasswordInput } from '../../interfaces/AdminInterfaces';
-import { TenantContext } from '../../../infrastructure/context/TenantContext';
+import { TenantContext } from '@/infrastructure/context/TenantContext';
 
 export class ChangeAdminPasswordUseCase {
     constructor(
