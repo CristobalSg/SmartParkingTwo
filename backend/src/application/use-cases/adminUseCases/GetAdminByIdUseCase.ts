@@ -1,7 +1,7 @@
-import { TenantContext } from "../../../infrastructure/context/TenantContext";
-import { AdminRepository } from "../../../core/domain/repositories/AdminRepository";
-import { AdminOutput } from "../../../application/interfaces/AdminInterfaces";
-import { Admin } from "../../../core/domain/entities/Admin";
+import { TenantContext } from "@/infrastructure/context/TenantContext";
+import { AdminRepository } from "@/core/domain/repositories/AdminRepository";
+import { AdminOutput } from "@/application/interfaces/AdminInterfaces";
+import { Admin } from "@/core/domain/entities/Admin";
 
 export class GetAdminByIdUseCase {
     constructor(

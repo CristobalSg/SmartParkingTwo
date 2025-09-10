@@ -1,7 +1,7 @@
-import { AdminRepository } from "../../../core/domain/repositories/AdminRepository";
-import { TenantContext } from "../../../infrastructure/context/TenantContext";
-import { Admin } from "../../../core/domain/entities/Admin";
-import { CreateAdminInput, AdminOutput } from "../../../application/interfaces/AdminInterfaces";
+import { AdminRepository } from "@/core/domain/repositories/AdminRepository";
+import { TenantContext } from "@/infrastructure/context/TenantContext";
+import { Admin } from "@/core/domain/entities/Admin";
+import { CreateAdminInput, AdminOutput } from "@/application/interfaces/AdminInterfaces";
 import { randomUUID } from 'crypto';
 
 export class CreateAdminUseCase {
