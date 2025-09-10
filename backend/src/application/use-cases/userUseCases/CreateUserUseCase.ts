@@ -1,6 +1,6 @@
-import { UserRepository } from '../../core/domain/repositories/UserRepository';
-import { User } from '../../core/domain/entities/User';
-import { CreateUserInput, UserOutput } from '../interfaces/UserInterfaces';
+import { UserRepository } from '@/core/domain/repositories/UserRepository';
+import { User } from '@/core/domain/entities/User';
+import { CreateUserInput, UserOutput } from '../../interfaces/UserInterfaces';
 import { v4 as uuidv4 } from 'uuid';
 import { TenantContext } from '@/infrastructure/context/TenantContext';
 

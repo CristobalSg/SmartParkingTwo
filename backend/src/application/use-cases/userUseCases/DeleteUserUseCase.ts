@@ -1,5 +1,5 @@
 import { TenantContext } from '@/infrastructure/context/TenantContext';
-import { UserRepository } from '../../core/domain/repositories/UserRepository';
+import { UserRepository } from '@/core/domain/repositories/UserRepository';
 
 export class DeleteUserUseCase {
     constructor(
