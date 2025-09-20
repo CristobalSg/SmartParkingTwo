@@ -1,27 +1,68 @@
 import { AdminRepository } from '../../domain/repositories/AdminRepository';
 import { AdminApiAdapter as IAdminApiAdapter } from '../../application/ports/AdminApiPort';
 import { TokenStorage } from '../storage/TokenStorage';
-import { AdminLoginInput, AdminLoginOutput, AdminOutput } from '../../application/ports/AdminApiPort';
+import { TokenManager, ITokenManager } from '../services/TokenManager';
+import { IHttpClient } from '../http/HttpClient';
+import { 
+  AdminLoginInput, 
+  AdminLoginOutput, 
+  AdminOutput, 
+  TokenResponse 
+} from '../../application/ports/AdminApiPort';
 
-// Implementación del repositorio de Admin que se comunica con la API
-// SRP: Solo coordina entre adaptadores, no maneja detalles de implementación
+// Implementación del repositorio de Admin que integra Dual Token
+// SRP: Solo coordina entre adaptadores y gestiona autenticación completa
+// DIP: Depende de abstracciones (TokenStorage, TokenManager, HttpClient)
 
 export class ApiAdminRepository implements AdminRepository {
+  private tokenManager: ITokenManager;
+
   constructor(
     private apiAdapter: IAdminApiAdapter,
-    private tokenStorage: TokenStorage
-  ) {}
+    private tokenStorage: TokenStorage,
+    private httpClient: IHttpClient
+  ) {
+    // Inicializar TokenManager
+    this.tokenManager = new TokenManager(tokenStorage);
+    
+    // Configurar callback de refresh en TokenManager
+    this.setupTokenRefresh();
+    
+    // Configurar interceptor HTTP para refresh automático
+    this.setupHttpInterceptor();
+    
+    // Restaurar token en HttpClient si existe
+    this.restoreAuthToken();
+  }
 
-  // Autentica un administrador
+  // === MÉTODOS PÚBLICOS DE AUTENTICACIÓN ===
+
+  // Autentica un administrador con sistema de dual token
   async login(credentials: AdminLoginInput, tenantId: string): Promise<AdminLoginOutput> {
     try {
       const result = await this.apiAdapter.login(credentials, tenantId);
       
-      // Guardar token automáticamente después del login exitoso
-      this.setAuthToken(result.token);
+      // Configurar tokens en TokenManager
+      this.tokenManager.setTokens(result.authentication);
+      
+      // Configurar información de sesión
+      if (result.session) {
+        this.tokenStorage.setSessionInfo(result.session.session_id, result.session.login_time);
+      }
+      
+      // Configurar token en HttpClient para peticiones futuras
+      this.httpClient.setAuthToken(result.authentication.access_token);
+      
+      console.log('Login successful with dual token system', {
+        adminId: result.admin.id,
+        hasAccessToken: !!result.authentication.access_token,
+        hasRefreshToken: !!result.authentication.refresh_token,
+        expiresAt: result.authentication.expires_at
+      });
       
       return result;
     } catch (error: any) {
+      console.error('Login failed:', error.message);
       throw new Error(`Login failed: ${error.message}`);
     }
   }
@@ -29,27 +70,34 @@ export class ApiAdminRepository implements AdminRepository {
   // Cierra sesión del administrador
   async logout(): Promise<void> {
     try {
+      // Intentar logout en backend
       await this.apiAdapter.logout();
-      this.clearAuthToken();
     } catch (error: any) {
-      // Incluso si falla la petición, limpiar localmente
-      this.clearAuthToken();
-      throw new Error(`Logout failed: ${error.message}`);
+      console.warn('Backend logout failed, cleaning local tokens anyway:', error.message);
+    } finally {
+      // Siempre limpiar tokens localmente
+      this.clearAllAuthData();
     }
   }
 
-  // Valida el token actual
+  // Valida el token actual o lo renueva automáticamente
   async validateToken(): Promise<AdminOutput> {
-    if (!this.isAuthenticated()) {
-      throw new Error('No authentication token found');
-    }
-
     try {
+      // Obtener token válido (renovará automáticamente si es necesario)
+      const validToken = await this.tokenManager.getValidAccessToken();
+      
+      if (!validToken) {
+        throw new Error('No valid authentication token');
+      }
+
+      // Validar token con backend
       return await this.apiAdapter.validateToken();
     } catch (error: any) {
-      // Si el token no es válido, limpiarlo
+      console.error('Token validation failed:', error.message);
+      
+      // Si falla la validación, limpiar tokens
       if (error.message.includes('Token expired') || error.message.includes('invalid')) {
-        this.clearAuthToken();
+        this.clearAllAuthData();
       }
       throw error;
     }
@@ -57,42 +105,125 @@ export class ApiAdminRepository implements AdminRepository {
 
   // Obtiene el perfil del administrador actual
   async getProfile(): Promise<AdminOutput> {
-    if (!this.isAuthenticated()) {
-      throw new Error('Not authenticated');
-    }
-
     try {
+      // Obtener token válido (renovará automáticamente si es necesario)
+      const validToken = await this.tokenManager.getValidAccessToken();
+      
+      if (!validToken) {
+        throw new Error('Not authenticated');
+      }
+
       return await this.apiAdapter.getProfile();
     } catch (error: any) {
+      console.error('Get profile failed:', error.message);
+      
       if (error.message.includes('Unauthorized')) {
-        this.clearAuthToken();
+        this.clearAllAuthData();
       }
       throw error;
     }
   }
 
+  // === MÉTODOS DE ESTADO ===
+
   // Verifica si hay un token de autenticación válido
   isAuthenticated(): boolean {
-    const token = this.getCurrentToken();
-    return token !== null && token.length > 0;
+    return this.tokenManager.isAuthenticated();
   }
 
   getCurrentToken(): string | null {
-    return this.tokenStorage.getToken();
+    return this.tokenStorage.getAccessToken();
   }
 
-  // Guarda el token de autenticación usando TokenStorage
+  // Obtiene información del estado actual de autenticación
+  getAuthStatus(): {
+    isAuthenticated: boolean;
+    tokenInfo: any;
+    sessionInfo: any;
+  } {
+    return {
+      isAuthenticated: this.isAuthenticated(),
+      tokenInfo: this.tokenManager.getTokenInfo(),
+      sessionInfo: this.tokenStorage.getSessionInfo()
+    };
+  }
+
+  // === MÉTODOS LEGACY (compatibilidad) ===
+
   setAuthToken(token: string): void {
-    this.tokenStorage.setToken(token);
+    // Método legacy - ahora se maneja automáticamente
+    console.warn('setAuthToken is deprecated - tokens are managed automatically');
   }
 
-  // Limpia el token de autenticación usando TokenStorage
   clearAuthToken(): void {
-    this.tokenStorage.clearToken();
+    this.clearAllAuthData();
   }
 
-  // Verifica si el token ha expirado usando TokenStorage
   isTokenExpired(): boolean {
-    return this.tokenStorage.isTokenExpired();
+    return this.tokenManager.needsRefresh();
+  }
+
+  // === MÉTODOS PRIVADOS ===
+
+  // Configurar callback de refresh en TokenManager
+  private setupTokenRefresh(): void {
+    this.tokenManager.setRefreshCallback(async (refreshToken: string): Promise<TokenResponse> => {
+      try {
+        console.log('ApiAdminRepository: Executing token refresh...');
+        const newTokenResponse = await this.apiAdapter.refreshToken(refreshToken);
+        
+        // Actualizar token en HttpClient
+        this.httpClient.setAuthToken(newTokenResponse.access_token);
+        
+        console.log('ApiAdminRepository: Token refresh completed successfully');
+        return newTokenResponse;
+      } catch (error: any) {
+        console.error('ApiAdminRepository: Token refresh failed:', error.message);
+        throw error;
+      }
+    });
+  }
+
+  // Configurar interceptor HTTP para refresh automático
+  private setupHttpInterceptor(): void {
+    this.httpClient.setTokenRefreshHandler(async (): Promise<string | null> => {
+      try {
+        console.log('HTTP Interceptor: Attempting token refresh...');
+        const validToken = await this.tokenManager.getValidAccessToken();
+        
+        if (validToken) {
+          console.log('HTTP Interceptor: Token refresh successful');
+          return validToken;
+        } else {
+          console.log('HTTP Interceptor: Token refresh failed - no valid token');
+          this.clearAllAuthData();
+          return null;
+        }
+      } catch (error: any) {
+        console.error('HTTP Interceptor: Token refresh error:', error.message);
+        this.clearAllAuthData();
+        throw error;
+      }
+    });
+  }
+
+  // Restaurar token en HttpClient al inicializar
+  private restoreAuthToken(): void {
+    const accessToken = this.tokenStorage.getAccessToken();
+    if (accessToken && !this.tokenStorage.isAccessTokenExpired()) {
+      this.httpClient.setAuthToken(accessToken);
+      console.log('Auth token restored in HttpClient');
+    }
+  }
+
+  // Limpiar todos los datos de autenticación
+  private clearAllAuthData(): void {
+    try {
+      this.tokenManager.clearTokens();
+      this.httpClient.removeAuthToken();
+      console.log('All authentication data cleared');
+    } catch (error) {
+      console.error('Error clearing auth data:', error);
+    }
   }
 }
