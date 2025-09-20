@@ -9,12 +9,32 @@ export interface AdminOutput {
   tenantUuid: string;
   email: string;
   name: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
+// Nueva interfaz para TokenResponse  
+export interface TokenResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: "Bearer";
+  expires_in: number;
+  expires_at: string;
+  scope: string;
+}
+
+// Nueva interfaz para información de sesión
+export interface SessionInfo {
+  session_id: string;
+  login_time: string;
+  ip_address?: string;
+}
+
+// Respuesta completa del login (coincide con AdminAuthOutput del backend)
 export interface AdminLoginOutput {
   admin: AdminOutput;
-  token: string;
-  expiresAt: string;
+  authentication: TokenResponse;
+  session?: SessionInfo;
 }
 
 export interface ApiResponse<T> {
@@ -33,4 +53,6 @@ export interface AdminApiAdapter {
   logout(): Promise<void>;
   validateToken(): Promise<AdminOutput>;
   getProfile(): Promise<AdminOutput>;
+  // Nueva función para refresh de tokens
+  refreshToken(refreshToken: string): Promise<TokenResponse>;
 }
