@@ -21,7 +21,6 @@ export class AdminController {
 
     @Post('login')
     async login(@Body() loginDto: AdminLoginDto, @Res() response: Response): Promise<void> {
-        console.log('AdminController.login called with:', JSON.stringify(loginDto, null, 2));
         try {
             // Convert DTO to Application Input
             const input: AdminLoginInput = {
@@ -29,12 +28,10 @@ export class AdminController {
                 password: loginDto.password,
                 tenantUuid: loginDto.tenantUuid || this.tenantContext.getTenantUuid(),
             };
-            console.log('Input to AdminLoginUseCase:', JSON.stringify(input, null, 2));
 
             const authResult = await this.adminLoginUseCase.execute(input);
 
             // Debug temporal - ver qué estructura se está devolviendo
-            console.log('AuthResult structure:', JSON.stringify(authResult, null, 2));
 
             // Headers de seguridad
             response.setHeader('Cache-Control', 'no-store');
@@ -118,7 +115,6 @@ export class AdminController {
             // TODO: Implementar invalidación de token en producción
             // Por ahora, simplemente retornamos éxito
             // En el futuro, body.token se usará para invalidar el token específico
-            console.log('Logout request for token:', body.token ? 'provided' : 'missing');
 
             return {
                 status: 'success',

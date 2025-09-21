@@ -3,11 +3,14 @@ import { Admin } from '../../../core/domain/entities/Admin';
 import { AdminLoginInput, AdminAuthOutput, AdminOutput } from '../../interfaces/AdminInterfaces';
 import { TenantContext } from '../../../infrastructure/context/TenantContext';
 import { generateSecureId, generateSimpleToken, generateRefreshToken } from '../../../shared/utils/crypto-utils';
+import { AuthenticationEventEmitter } from '@/core/domain/events/AuthenticationEventEmitter';
 
 export class AdminLoginUseCase {
     constructor(
         private readonly adminRepository: AdminRepository,
-        private readonly tenantContext: TenantContext
+        private readonly tenantContext: TenantContext,
+            private readonly authEventEmitter: AuthenticationEventEmitter,
+
     ) { }
 
     async execute(input: AdminLoginInput): Promise<AdminAuthOutput> {
@@ -53,6 +56,7 @@ export class AdminLoginUseCase {
         // Generar token y respuesta de autenticación
         const authOutput = await this.generateAuthResponse(admin);
 
+        this.authEventEmitter.notifyAdminLogin(admin);
         return authOutput;
     }
 
