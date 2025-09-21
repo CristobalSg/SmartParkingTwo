@@ -5,11 +5,16 @@ import { TenantContext } from '../../../infrastructure/context/TenantContext';
 import { generateSecureId, generateSimpleToken, generateRefreshToken } from '../../../shared/utils/crypto-utils';
 import { AuthenticationEventEmitter } from '@/core/domain/events/AuthenticationEventEmitter';
 
+import { PasswordPolicy } from '../../../core/domain/validation/PasswordPolicy';
+import { SimplePasswordPolicy } from '../../../core/domain/validation/SimplePasswordPolicy';
+import { StrongPasswordPolicy } from '../../../core/domain/validation/StrongPasswordPolicy';
+
+
 export class AdminLoginUseCase {
     constructor(
         private readonly adminRepository: AdminRepository,
         private readonly tenantContext: TenantContext,
-            private readonly authEventEmitter: AuthenticationEventEmitter,
+        private readonly authEventEmitter: AuthenticationEventEmitter,
 
     ) { }
 
@@ -23,6 +28,12 @@ export class AdminLoginUseCase {
         // Validar input
         this.validateInput(input);
 
+        const policy = this.selectPolicy();
+        const policyResult = policy.validate(input.password);
+        if (!policyResult.valid) {
+            throw new Error(`Password policy violation: ${policyResult.reason ?? 'invalid password'}`);
+        }
+        
         // Buscar el administrador por email en el tenant específico
         const admin = await this.adminRepository.findByEmailForAuth(input.email, tenantUuid);
 
@@ -36,6 +47,7 @@ export class AdminLoginUseCase {
             throw new Error('Invalid email or password');
         }
 
+    
         // Verificar la contraseña
         const isPasswordValid = admin.verifyPassword(input.password);
 
@@ -58,6 +70,13 @@ export class AdminLoginUseCase {
 
         this.authEventEmitter.notifyAdminLogin(admin);
         return authOutput;
+    }
+
+    private selectPolicy(): PasswordPolicy {
+        const tenant = this.tenantContext.getTenant?.();
+        const policyName = tenant?.tenantId.toString() === "universidad-nacional" ? 'simple' : 'strong';
+        if (policyName === 'simple') return new SimplePasswordPolicy();
+        return new StrongPasswordPolicy();
     }
 
     private validateInput(input: AdminLoginInput): void {
