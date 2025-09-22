@@ -6,9 +6,11 @@ import { PrismaAdminRepository } from '../repositories/PrismaAdminRepository';
 import { TenantContext } from '../context/TenantContext';
 import { AuthenticationEventEmitter } from '../../core/domain/events/AuthenticationEventEmitter';
 import { AdminLoginLogger } from '../../application/services/AdminLoginLogger';
+import { EmailServiceAdapter } from '../adapters/EmailServiceAdapter';
 
 export const ADMIN_REPOSITORY_TOKEN = 'ADMIN_REPOSITORY_TOKEN';
 export const ADMIN_LOGIN_USE_CASE_TOKEN = 'ADMIN_LOGIN_USE_CASE_TOKEN';
+export const EMAIL_SERVICE_TOKEN = 'EMAIL_SERVICE_TOKEN';
 
 @Module({
     imports: [PrismaModule],
@@ -28,13 +30,18 @@ export const ADMIN_LOGIN_USE_CASE_TOKEN = 'ADMIN_LOGIN_USE_CASE_TOKEN';
                 return emitter;
             },
         },
+        // 🔥 PATRÓN ADAPTER: Servicio de Email
+        {
+            provide: EMAIL_SERVICE_TOKEN,
+            useClass: EmailServiceAdapter,
+        },
         // Caso de uso de login
         {
             provide: ADMIN_LOGIN_USE_CASE_TOKEN,
-            useFactory: (adminRepository, tenantContext, authEventEmitter) => {
-                return new AdminLoginUseCase(adminRepository, tenantContext, authEventEmitter);
+            useFactory: (adminRepository, tenantContext, authEventEmitter, emailService) => {
+                return new AdminLoginUseCase(adminRepository, tenantContext, authEventEmitter, emailService);
             },
-            inject: [ADMIN_REPOSITORY_TOKEN, TenantContext, AuthenticationEventEmitter],
+            inject: [ADMIN_REPOSITORY_TOKEN, TenantContext, AuthenticationEventEmitter, EMAIL_SERVICE_TOKEN],
         },
     ],
     exports: [ADMIN_REPOSITORY_TOKEN, ADMIN_LOGIN_USE_CASE_TOKEN],
