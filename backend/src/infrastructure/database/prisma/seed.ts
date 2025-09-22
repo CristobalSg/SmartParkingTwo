@@ -82,6 +82,38 @@ async function main() {
         }),
         prisma.administrator.create({
             data: {
+                email: 'sarancibia2022@alu.uct.cl',
+                passwordHash: adminPassword,
+                name: 'Sion - Super Admin',
+                tenant: { connect: { id: tenants[0].id } }
+            },
+        }),
+        prisma.administrator.create({
+            data: {
+                email: 'criquelme2022@alu.uct.cl',
+                passwordHash: adminPassword,
+                name: 'Carlos - Super Admin',
+                tenant: { connect: { id: tenants[0].id } }
+            },
+        }),
+        prisma.administrator.create({
+            data: {
+                email: 'pantivil2022@alu.uct.cl',
+                passwordHash: adminPassword,
+                name: 'Pablo - Super Admin',
+                tenant: { connect: { id: tenants[0].id } }
+            },
+        }),
+        prisma.administrator.create({
+            data: {
+                email: 'csandoval2022@alu.uct.cl',
+                passwordHash: adminPassword,
+                name: 'Cristobal - Super Admin',
+                tenant: { connect: { id: tenants[0].id } }
+            },
+        }),
+        prisma.administrator.create({
+            data: {
                 email: 'supervisor@universidad.edu',
                 passwordHash: hashPassword('super123'),
                 name: 'María García - Supervisora',

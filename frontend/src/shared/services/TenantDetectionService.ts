@@ -20,7 +20,7 @@ export class TenantDetectionService implements ITenantDetectionService {
       id: 'universidad-nacional',
       name: 'Universidad Nacional',
       domain: 'universidad.edu',
-      emailDomains: ['universidad.edu', 'uni.edu', 'estudiantes.universidad.edu']
+      emailDomains: ['universidad.edu', 'uni.edu', 'estudiantes.universidad.edu', 'gmail.com', 'alu.uct.cl']
     },
     {
       id: 'empresa-tech',
@@ -53,7 +53,7 @@ export class TenantDetectionService implements ITenantDetectionService {
     }
 
     const domain = email.split('@')[1].toLowerCase();
-    
+
     // Buscar tenant que maneje este dominio
     for (const tenant of this.tenantMappings) {
       if (tenant.emailDomains.some(d => d.toLowerCase() === domain)) {
