@@ -1,6 +1,6 @@
 // Application layer interfaces - Framework agnostic
 export interface CreateAdminInput {
-    tenantUuid: string; // UUID del tenant al que pertenece el administrador
+    tenantUuid?: string; // UUID del tenant al que pertenece el administrador (opcional si se usa contexto)
     email: string;
     password: string;
     name: string;

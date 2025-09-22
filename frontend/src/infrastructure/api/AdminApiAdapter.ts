@@ -1,11 +1,12 @@
 import { IHttpClient, HttpResponse } from '../http/HttpClient';
-import { 
+import {
   AdminApiAdapter as IAdminApiAdapter,
-  AdminLoginInput, 
-  AdminLoginOutput, 
+  AdminLoginInput,
+  AdminLoginOutput,
   AdminOutput,
+  CreateAdminInput,
   ApiResponse,
-  TokenResponse 
+  TokenResponse
 } from '../../application/ports/AdminApiPort';
 
 // Implementación del adaptador de Admin API (Implementacion de puerto)
@@ -15,7 +16,7 @@ import {
 export class AdminApiAdapter implements IAdminApiAdapter {
   private readonly basePath = '/admin';
 
-  constructor(private httpClient: IHttpClient) {}
+  constructor(private httpClient: IHttpClient) { }
 
   /**
    * Realiza login de administrador
@@ -43,7 +44,7 @@ export class AdminApiAdapter implements IAdminApiAdapter {
       if (response.data.status === 'success' && response.data.data) {
         // Procesar la respuesta completa del backend
         const backendData = response.data.data;
-        
+
         // Verificar que la estructura sea la esperada
         if (!this.isValidLoginResponse(backendData)) {
           throw new Error('Invalid response structure from backend');
@@ -56,7 +57,54 @@ export class AdminApiAdapter implements IAdminApiAdapter {
     } catch (error: any) {
       // Asegurar que el header se limpia incluso en caso de error
       this.httpClient.removeHeader('X-Tenant-ID');
-      
+
+      if (error.response?.data?.error) {
+        throw new Error(error.response.data.error);
+      } else if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      } else if (error.message) {
+        throw new Error(error.message);
+      } else {
+        throw new Error('Network error or invalid response');
+      }
+    }
+  }
+
+  /**
+   * Registra un nuevo administrador
+   * @param adminData - Datos del administrador a registrar
+   * @returns Promise con los datos del admin creado
+   */
+  async register(adminData: CreateAdminInput): Promise<AdminOutput> {
+    try {
+      // Header de tenant específico para esta petición
+      this.httpClient.setHeader('X-Tenant-ID', adminData.tenantUuid || '');
+
+      // Crear el payload sin tenantUuid ya que se resuelve del contexto
+      const payload = {
+        email: adminData.email,
+        password: adminData.password,
+        name: adminData.name
+      };
+
+      // Realizar la petición de registro
+      const response: HttpResponse<ApiResponse<AdminOutput>> = await this.httpClient.post(
+        `${this.basePath}/register`,
+        payload
+      );
+
+      // Limpiar header después de la petición
+      this.httpClient.removeHeader('X-Tenant-ID');
+
+      if (response.data.status === 'success' && response.data.data) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data.error || response.data.message || 'Registration failed');
+      }
+    } catch (error: any) {
+      // Asegurar que el header se limpia incluso en caso de error
+      this.httpClient.removeHeader('X-Tenant-ID');
+
       if (error.response?.data?.error) {
         throw new Error(error.response.data.error);
       } else if (error.response?.data?.message) {
@@ -90,7 +138,7 @@ export class AdminApiAdapter implements IAdminApiAdapter {
       if (error.response?.status === 401) {
         throw new Error('Refresh token expired or invalid');
       }
-      
+
       if (error.response?.data?.error) {
         throw new Error(error.response.data.error);
       } else if (error.response?.data?.message) {

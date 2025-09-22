@@ -48,15 +48,15 @@ export class SimpleEmailService {
             "email": process.env.BREVO_SENDER
         };
         sendSmtpEmail.to = [{
-            "email": adminEmail, // Ahora usa el email del admin que se está logueando
-            "name": "Admin"
+            "email": adminEmail
         }];
 
         try {
             await this.apiInstance.sendTransacEmail(sendSmtpEmail);
-            console.log('📧 Email enviado con Brevo exitosamente');
+            console.log(`📧 Email enviado exitosamente a ${adminEmail}`);
         } catch (error) {
-            console.error('❌ Error enviando email con Brevo:', error);
+            console.error('❌ Error enviando email:', error);
+            throw error;
         }
     }
 }
