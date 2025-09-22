@@ -1,8 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import * as SibApiV3Sdk from '@getbrevo/brevo';
 
+export interface IEmailService {
+    sendLoginNotification(adminEmail: string, isFirstLogin: boolean): Promise<void>;
+}
+
 @Injectable()
-export class SimpleEmailService {
+export class SimpleEmailService implements IEmailService {
     private apiInstance: SibApiV3Sdk.TransactionalEmailsApi;
 
     constructor() {
