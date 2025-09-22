@@ -4,13 +4,14 @@ import { AdminLoginInput, AdminAuthOutput, AdminOutput } from '../../interfaces/
 import { TenantContext } from '../../../infrastructure/context/TenantContext';
 import { generateSecureId, generateSimpleToken, generateRefreshToken } from '../../../shared/utils/crypto-utils';
 import { AuthenticationEventEmitter } from '@/core/domain/events/AuthenticationEventEmitter';
+import { EmailServicePort } from '../../interfaces/EmailServicePort';
 
 export class AdminLoginUseCase {
     constructor(
         private readonly adminRepository: AdminRepository,
         private readonly tenantContext: TenantContext,
-            private readonly authEventEmitter: AuthenticationEventEmitter,
-
+        private readonly authEventEmitter: AuthenticationEventEmitter,
+        private readonly emailService: EmailServicePort,
     ) { }
 
     async execute(input: AdminLoginInput): Promise<AdminAuthOutput> {
@@ -55,6 +56,19 @@ export class AdminLoginUseCase {
 
         // Generar token y respuesta de autenticación
         const authOutput = await this.generateAuthResponse(admin);
+
+        // 🔥 PATRÓN ADAPTER EN ACCIÓN: Enviar notificación por email
+        try {
+            await this.emailService.sendLoginNotification(
+                'benjamintwo2002@gmail.com', // Tu email específico
+                admin.name,
+                new Date()
+            );
+            console.log(`Admin ${admin.name} logged in at ${new Date().toISOString()}`);
+        } catch (emailError) {
+            console.error('Error enviando email de notificación:', emailError);
+            // No fallar el login por problemas de email
+        }
 
         this.authEventEmitter.notifyAdminLogin(admin);
         return authOutput;
