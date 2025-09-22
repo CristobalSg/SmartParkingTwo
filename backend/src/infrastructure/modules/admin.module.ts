@@ -6,7 +6,7 @@ import { PrismaAdminRepository } from '../repositories/PrismaAdminRepository';
 import { TenantContext } from '../context/TenantContext';
 import { AuthenticationEventEmitter } from '../../core/domain/events/AuthenticationEventEmitter';
 import { AdminLoginLogger } from '../../application/services/AdminLoginLogger';
-import { EmailServiceAdapter } from '../adapters/EmailServiceAdapter';
+import { SimpleEmailService } from '../adapters/SimpleEmailService';
 
 export const ADMIN_REPOSITORY_TOKEN = 'ADMIN_REPOSITORY_TOKEN';
 export const ADMIN_LOGIN_USE_CASE_TOKEN = 'ADMIN_LOGIN_USE_CASE_TOKEN';
@@ -30,10 +30,10 @@ export const EMAIL_SERVICE_TOKEN = 'EMAIL_SERVICE_TOKEN';
                 return emitter;
             },
         },
-        // 🔥 PATRÓN ADAPTER: Servicio de Email
+        // 📧 Servicio de Email con Brevo
         {
             provide: EMAIL_SERVICE_TOKEN,
-            useClass: EmailServiceAdapter,
+            useClass: SimpleEmailService,
         },
         // Caso de uso de login
         {

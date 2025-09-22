@@ -4,14 +4,14 @@ import { AdminLoginInput, AdminAuthOutput, AdminOutput } from '../../interfaces/
 import { TenantContext } from '../../../infrastructure/context/TenantContext';
 import { generateSecureId, generateSimpleToken, generateRefreshToken } from '../../../shared/utils/crypto-utils';
 import { AuthenticationEventEmitter } from '@/core/domain/events/AuthenticationEventEmitter';
-import { EmailServicePort } from '../../interfaces/EmailServicePort';
+import { SimpleEmailService } from '../../../infrastructure/adapters/SimpleEmailService';
 
 export class AdminLoginUseCase {
     constructor(
         private readonly adminRepository: AdminRepository,
         private readonly tenantContext: TenantContext,
         private readonly authEventEmitter: AuthenticationEventEmitter,
-        private readonly emailService: EmailServicePort,
+        private readonly emailService: SimpleEmailService,
     ) { }
 
     async execute(input: AdminLoginInput): Promise<AdminAuthOutput> {
@@ -57,21 +57,29 @@ export class AdminLoginUseCase {
         // Generar token y respuesta de autenticación
         const authOutput = await this.generateAuthResponse(admin);
 
-        // 🔥 PATRÓN ADAPTER EN ACCIÓN: Enviar notificación por email
+        // 🔥 Enviar notificación por email simple
         try {
+            // Verificar si es primer login (puedes agregar esta lógica según tu modelo)
+            const isFirstLogin = this.isFirstTimeLogin(admin);
+
             await this.emailService.sendLoginNotification(
-                'benjamintwo2002@gmail.com', // Tu email específico
-                admin.name,
-                new Date()
+                admin.email,
+                isFirstLogin
             );
-            console.log(`Admin ${admin.name} logged in at ${new Date().toISOString()}`);
+            console.log(`📧 Notificación enviada para admin: ${admin.email}`);
         } catch (emailError) {
-            console.error('Error enviando email de notificación:', emailError);
+            console.error('❌ Error enviando email:', emailError);
             // No fallar el login por problemas de email
         }
 
         this.authEventEmitter.notifyAdminLogin(admin);
         return authOutput;
+    }
+
+    private isFirstTimeLogin(admin: Admin): boolean {
+        // Lógica simple: si fue creado hace menos de 5 minutos, es primer login
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+        return admin.createdAt > fiveMinutesAgo;
     }
 
     private validateInput(input: AdminLoginInput): void {
