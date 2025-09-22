@@ -1,21 +1,26 @@
 import { Controller, Post, Body, HttpStatus, HttpException, Inject, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { AdminLoginUseCase } from '../../application/use-cases/adminUseCases/AdminLoginUseCase';
+import { AdminRegisterUseCase } from '../../application/use-cases/adminUseCases/AdminRegisterUseCase';
 import {
     AdminLoginDto,
+    CreateAdminDto,
     ApiResponse
 } from '../dtos/AdminDto';
-import { AdminLoginInput } from '../../application/interfaces/AdminInterfaces';
+import { AdminLoginInput, CreateAdminInput } from '../../application/interfaces/AdminInterfaces';
 import { TenantContext } from '../../infrastructure/context/TenantContext';
 import { validateSimpleToken } from '../../shared/utils/crypto-utils';
 
 export const ADMIN_LOGIN_USE_CASE_TOKEN = 'ADMIN_LOGIN_USE_CASE_TOKEN';
+export const ADMIN_REGISTER_USE_CASE_TOKEN = 'ADMIN_REGISTER_USE_CASE_TOKEN';
 
 @Controller('api/admin')
 export class AdminController {
     constructor(
         @Inject(ADMIN_LOGIN_USE_CASE_TOKEN)
         private readonly adminLoginUseCase: AdminLoginUseCase,
+        @Inject(ADMIN_REGISTER_USE_CASE_TOKEN)
+        private readonly adminRegisterUseCase: AdminRegisterUseCase,
         private readonly tenantContext: TenantContext
     ) { }
 
@@ -58,6 +63,40 @@ export class AdminController {
                 {
                     status: 'error',
                     message: 'Authentication failed',
+                    error: error.message
+                },
+                statusCode
+            );
+        }
+    }
+
+    @Post('register')
+    async register(@Body() registerDto: CreateAdminDto, @Res() response: Response): Promise<void> {
+        try {
+            // Convert DTO to Application Input
+            const input: CreateAdminInput = {
+                tenantUuid: this.tenantContext.getTenantUuid(), // Always use tenant from context
+                email: registerDto.email,
+                password: registerDto.password,
+                name: registerDto.name,
+            };
+
+            const adminResult = await this.adminRegisterUseCase.execute(input);
+
+            response.status(201).json({
+                status: 'success',
+                data: adminResult,
+                message: 'Administrator registered successfully'
+            });
+        } catch (error) {
+            const statusCode = error.message.includes('already registered')
+                ? HttpStatus.CONFLICT
+                : HttpStatus.BAD_REQUEST;
+
+            throw new HttpException(
+                {
+                    status: 'error',
+                    message: 'Registration failed',
                     error: error.message
                 },
                 statusCode
@@ -110,7 +149,7 @@ export class AdminController {
 
     // Endpoint para logout (invalidar token)
     @Post('logout')
-    async logout(@Body() body: { token: string }): Promise<ApiResponse<null>> {
+    async logout(): Promise<ApiResponse<null>> {
         try {
             // TODO: Implementar invalidación de token en producción
             // Por ahora, simplemente retornamos éxito
