@@ -121,7 +121,8 @@ const LoginForm: React.FC = () => {
     );
 }
   return (
-    <div className="flex items-center justify-center min-h-screen p-5 bg-gradient-to-br from-indigo-500 to-purple-700">
+    //<div className="flex items-center justify-center min-h-screen p-5 bg-gradient-to-br from-indigo-500 to-purple-700">
+    <div className="flex flex-col items-center justify-center min-h-screen p-5 bg-gradient-to-br from-primary-light to-primary-dark">
       {/* Tailwind: Breakpoints______
       w-full max-w-md → en móviles ocupa 100% hasta un máximo de md (aprox 28rem).
       sm:max-w-lg → en pantallas ≥ 640px el máximo ancho será lg (32rem).
