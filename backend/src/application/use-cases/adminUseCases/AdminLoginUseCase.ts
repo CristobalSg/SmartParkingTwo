@@ -3,11 +3,20 @@ import { Admin } from '@/core/domain/entities/Admin';
 import { AdminLoginInput, AdminAuthOutput, AdminOutput } from '../../interfaces/AdminInterfaces';
 import { TenantContext } from '@/infrastructure/context/TenantContext';
 import { generateSecureId, generateSimpleToken, generateRefreshToken } from '@/shared/utils/crypto-utils';
+import { AuthenticationEventEmitter } from '@/core/domain/events/AuthenticationEventEmitter';
+import { SimpleEmailService } from '../../../infrastructure/adapters/SimpleEmailService';
+
+import { PasswordPolicy } from '../../../core/domain/validation/PasswordPolicy';
+import { SimplePasswordPolicy } from '../../../core/domain/validation/SimplePasswordPolicy';
+import { StrongPasswordPolicy } from '../../../core/domain/validation/StrongPasswordPolicy';
 
 export class AdminLoginUseCase {
     constructor(
         private readonly adminRepository: AdminRepository,
-        private readonly tenantContext: TenantContext
+        private readonly tenantContext: TenantContext,
+
+        private readonly authEventEmitter: AuthenticationEventEmitter,
+        private readonly emailService: SimpleEmailService,
     ) { }
 
     async execute(input: AdminLoginInput): Promise<AdminAuthOutput> {
@@ -19,6 +28,14 @@ export class AdminLoginUseCase {
 
         // Validar input
         this.validateInput(input);
+
+        const policy = this.selectPolicy();
+        const policyResult = policy.validate(input.password);
+        if (!policyResult.valid) {
+            throw new Error(`[Strategy password] Password policy violation: ${policyResult.reason ?? 'invalid password'}`);
+        } else {
+            console.log(`[Strategy password] Politica de password validada!`)
+        }
 
         // Buscar el administrador por email en el tenant específico
         const admin = await this.adminRepository.findByEmailForAuth(input.email, tenantUuid);
@@ -32,6 +49,7 @@ export class AdminLoginUseCase {
         if (!admin.belongsToTenant(tenantUuid)) {
             throw new Error('Invalid email or password');
         }
+
 
         // Verificar la contraseña
         const isPasswordValid = admin.verifyPassword(input.password);
@@ -53,7 +71,37 @@ export class AdminLoginUseCase {
         // Generar token y respuesta de autenticación
         const authOutput = await this.generateAuthResponse(admin);
 
+        // 🔥 Enviar notificación por email simple
+        try {
+            // Verificar si es primer login (puedes agregar esta lógica según tu modelo)
+            const isFirstLogin = this.isFirstTimeLogin(admin);
+
+            await this.emailService.sendLoginNotification(
+                admin.email,
+                isFirstLogin
+            );
+            console.log(`[Adapter] 📧 Notificación enviada para admin: ${admin.email}`);
+        } catch (emailError) {
+            console.error('❌ Error enviando email:', emailError);
+            // No fallar el login por problemas de email
+        }
+
+        this.authEventEmitter.notifyAdminLogin(admin);
         return authOutput;
+    }
+
+    private isFirstTimeLogin(admin: Admin): boolean {
+        // Lógica simple: si fue creado hace menos de 5 minutos, es primer login
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+        return admin.createdAt > fiveMinutesAgo;
+    }
+
+    private selectPolicy(): PasswordPolicy {
+        const tenant = this.tenantContext.getTenant?.();
+        const policyName = tenant?.tenantId.toString() === "universidad-nacional" ? 'simple' : 'strong';
+        console.log(`[Strategy password] Validando politica de Password..: ${policyName}`)
+        if (policyName === 'simple') return new SimplePasswordPolicy();
+        return new StrongPasswordPolicy();
     }
 
     private validateInput(input: AdminLoginInput): void {

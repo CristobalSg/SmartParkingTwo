@@ -1,36 +1,19 @@
-import React from 'react';
-import { AuthProvider } from './contexts/AuthContext';
-import { useAuth } from './hooks/useAuth';
-
-// Componente principal de la aplicación
-const AppContent: React.FC = () => {
-  const { isAuthenticated, user } = useAuth();
-
-  return (
-    <div className="App">
-      <header>
-        <h1>Smart Parking System</h1>
-        {isAuthenticated && <p>Bienvenido, {user?.name}!</p>}
-      </header>
-      <main>
-        {isAuthenticated ? (
-          <div>
-            <p>Dashboard del sistema de estacionamiento</p>
-            <p>Usuario: {user?.email}</p>
-          </div>
-        ) : (
-          <p>Por favor, inicia sesión para continuar</p>
-        )}
-      </main>
-    </div>
-  );
-};
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import LoginPage from "./presentation/pages/LoginPage";
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<LoginPage />} />
+      </Routes>
+    </Router>
   );
 }
 
