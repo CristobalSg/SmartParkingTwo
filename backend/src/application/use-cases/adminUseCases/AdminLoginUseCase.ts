@@ -1,15 +1,14 @@
-import { AdminRepository } from '../../../core/domain/repositories/AdminRepository';
-import { Admin } from '../../../core/domain/entities/Admin';
+import { AdminRepository } from '@/core/domain/repositories/AdminRepository';
+import { Admin } from '@/core/domain/entities/Admin';
 import { AdminLoginInput, AdminAuthOutput, AdminOutput } from '../../interfaces/AdminInterfaces';
-import { TenantContext } from '../../../infrastructure/context/TenantContext';
-import { generateSecureId, generateSimpleToken, generateRefreshToken } from '../../../shared/utils/crypto-utils';
+import { TenantContext } from '@/infrastructure/context/TenantContext';
+import { generateSecureId, generateSimpleToken, generateRefreshToken } from '@/shared/utils/crypto-utils';
 import { AuthenticationEventEmitter } from '@/core/domain/events/AuthenticationEventEmitter';
 import { SimpleEmailService } from '../../../infrastructure/adapters/SimpleEmailService';
 
 import { PasswordPolicy } from '../../../core/domain/validation/PasswordPolicy';
 import { SimplePasswordPolicy } from '../../../core/domain/validation/SimplePasswordPolicy';
 import { StrongPasswordPolicy } from '../../../core/domain/validation/StrongPasswordPolicy';
-
 
 export class AdminLoginUseCase {
     constructor(
