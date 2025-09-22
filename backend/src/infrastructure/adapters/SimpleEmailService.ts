@@ -33,13 +33,13 @@ export class SimpleEmailService {
         sendSmtpEmail.subject = subject;
         sendSmtpEmail.htmlContent = `
             <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
-                <h2 style="color: #2563eb;">Smart Parking System</h2>
+                <h2 style="color: #2563eb;">🅿️ Smart Parking System</h2>
                 <p><strong>${message}</strong></p>
-                <p><strong>Email del Admin:</strong> ${adminEmail}</p>
+                <p><strong>Tu email:</strong> ${adminEmail}</p>
                 <p><strong>Fecha y Hora:</strong> ${new Date().toLocaleString('es-ES')}</p>
                 <hr>
                 <p style="color: #666; font-size: 12px;">
-                    Esta es una notificación automática del sistema Smart Parking.
+                    Esta es una notificación automática del sistema Smart Parking enviada a tu email personal.
                 </p>
             </div>
         `;
@@ -48,8 +48,8 @@ export class SimpleEmailService {
             "email": process.env.BREVO_SENDER
         };
         sendSmtpEmail.to = [{
-            "email": "benjamintwo2002@gmail.com",
-            "name": "Benjamin"
+            "email": adminEmail, // Ahora usa el email del admin que se está logueando
+            "name": "Admin"
         }];
 
         try {
