@@ -74,6 +74,14 @@ async function main() {
         }),
         prisma.administrator.create({
             data: {
+                email: 'benjamintwo2002@gmail.com',
+                passwordHash: adminPassword,
+                name: 'Benjamin - Super Admin',
+                tenant: { connect: { id: tenants[0].id } }
+            },
+        }),
+        prisma.administrator.create({
+            data: {
                 email: 'supervisor@universidad.edu',
                 passwordHash: hashPassword('super123'),
                 name: 'María García - Supervisora',
