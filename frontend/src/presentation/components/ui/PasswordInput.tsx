@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Input from "../ui/Input";
 
 interface PasswordInputProps {
   value: string;
@@ -12,22 +13,14 @@ const PasswordInput: React.FC<PasswordInputProps> = ({ value, onChange, placehol
   return (
     <div className="relative w-full mb-6">
       {/* Input */}
-      <input
-        type={showPassword ? "text" : "password"}
-        value={value}
-        onChange={onChange}
-        placeholder="admin123"
-        required
-        className="w-full px-4 pt-5 pb-2 text-white bg-white/10 border border-white/20 rounded-xl outline-none backdrop-blur-md focus:bg-white/20 focus:border-cyan-400 transition"
-      />
-      
-      {/* Label flotante */}
-      <label className={`absolute left-4 top-2 text-white/70 text-sm transition-all duration-300 pointer-events-none ${value ? "-translate-y-2 scale-90 text-cyan-400" : ""}`}>
-        {placeholder}
-      </label>
-
-      {/* Borde animado */}
-      <span className="absolute bottom-0 left-1/2 w-0 h-0.5 bg-gradient-to-r from-cyan-400 to-indigo-500 transition-all duration-300 transform -translate-x-1/2 pointer-events-none input-focus:!w-full"></span>
+      <Input
+            label={placeholder}
+            type={showPassword ? "text" : "password"}
+            value={value}
+            onChange={onChange}
+            placeholder="admin123"
+            required
+          />
 
       {/* Toggle botón */}
       <button
