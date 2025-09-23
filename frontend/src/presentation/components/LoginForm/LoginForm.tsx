@@ -33,7 +33,7 @@ const LoginForm: React.FC = () => {
   const updateAuthStatus = () => {
     const status = adminRepo.getAuthStatus();
     setAuthStatus(status);
-    console.log('Current Auth Status:', status);
+    console.log("Current Auth Status:", status);
   };
 
   // Cargar estado inicial
@@ -43,10 +43,10 @@ const LoginForm: React.FC = () => {
 
   // Auto-detectar tenant cuando cambia el email
   useEffect(() => {
-    if (email && email.includes('@')) {
+    if (email && email.includes("@")) {
       const detected = tenantDetectionService.detectTenantFromEmail(email);
       setDetectedTenant(detected);
-      
+
       if (detected) {
         console.log(`Tenant auto-detected: ${detected} for email: ${email}`);
       }
@@ -63,22 +63,25 @@ const LoginForm: React.FC = () => {
     try {
       // Detectar tenant basado en email
       const tenantId = tenantDetectionService.detectTenantFromEmail(email);
-      
+
       if (!tenantId) {
-        throw new Error(`No se pudo determinar el tenant para el email: ${email}. Verifica el dominio del email.`);
+        throw new Error(
+          `No se pudo determinar el tenant para el email: ${email}. Verifica el dominio del email.`
+        );
       }
 
-      console.log(`🚀 Attempting login with tenant: ${tenantId} for email: ${email}`);
-      
+      console.log(
+        `🚀 Attempting login with tenant: ${tenantId} for email: ${email}`
+      );
+
       const result = await adminRepo.login({ email, password }, tenantId);
-      
+
       console.log("Login successful with auto-detected tenant:", result);
       setLoginSuccess(true);
       updateAuthStatus();
-      
     } catch (err: any) {
-      setError(err.message || 'Login failed');
-      console.error('Login error:', err);
+      setError(err.message || "Login failed");
+      console.error("Login error:", err);
     } finally {
       setLoading(false);
     }
@@ -94,17 +97,18 @@ const LoginForm: React.FC = () => {
       setDetectedTenant(null);
       console.log("Logout successful");
     } catch (err: any) {
-      console.error('Logout error:', err);
+      console.error("Logout error:", err);
     }
   };
 
+  // Vista de éxito de login
   if (loginSuccess && authStatus?.isAuthenticated) {
     return (
       <div className="flex items-center justify-center min-h-screen p-5 bg-gradient-to-br from-indigo-500 to-purple-700">
         <Card>
           <div className="text-center mb-8">
             <Typography variant="h2">
-              Login Successful
+              ✅ Login Successful
             </Typography>
 
             <Typography variant="p">
@@ -112,15 +116,17 @@ const LoginForm: React.FC = () => {
             </Typography>
           </div>
 
-            <Button
-              onClick={handleLogout}
-              variant="secondary">
-              Logout
-            </Button>
+          <Button
+            onClick={handleLogout}
+            variant="secondary">
+            🚪 Logout
+          </Button>
         </Card>
       </div>
     );
-}
+  }
+
+  // Vista principal del login
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-5 
       bg-gradient-to-br from-primary-light to-primary-dark 
@@ -130,14 +136,6 @@ const LoginForm: React.FC = () => {
       <header className="p-4 flex justify-end">
         <DarkModeToggle />
       </header>
-      {/* Tailwind: Breakpoints______
-      w-full max-w-md → en móviles ocupa 100% hasta un máximo de md (aprox 28rem).
-      sm:max-w-lg → en pantallas ≥ 640px el máximo ancho será lg (32rem).
-      md:max-w-xl → en pantallas ≥ 768px el máximo será xl (36rem).
-      p-6 y rounded-2xl → padding y borde redondeado que también se ve bien en cualquier pantalla.
-
-      Y ademas en Tailwind, los inputs y botones ya son flexibles si usas: className="w-full ..."
-      */}
 
       <Card>
         {/* Aquí va tu LoginForm */}
@@ -169,7 +167,8 @@ const LoginForm: React.FC = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@univesidad.edu"
+              placeholder="admin@universidad.edu"
+              required
             />
             
             <div className="relative">
@@ -192,7 +191,7 @@ const LoginForm: React.FC = () => {
           {/* Footer */}
           <p className="mt-6 text-center text-white/80 text-sm">
             ¿No tienes una cuenta?{" "}
-            <a href="/signup" className="text-cyan-400 hover:underline font-medium">
+            <a href="/register" className="text-cyan-400 hover:underline font-medium">
               Regístrate
             </a>
           </p>
