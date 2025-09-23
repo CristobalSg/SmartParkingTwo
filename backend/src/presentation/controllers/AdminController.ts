@@ -1,11 +1,12 @@
 import { Controller, Post, Body, Get, HttpStatus, HttpException, Inject, Res, Param, Put } from '@nestjs/common';
 import { Response } from 'express';
 import { AdminLoginUseCase } from '../../application/use-cases/adminUseCases/AdminLoginUseCase';
+import { AdminRegisterUseCase } from '../../application/use-cases/adminUseCases/AdminRegisterUseCase';
 import {
     AdminLoginDto,
+    CreateAdminDto,
     ApiResponse,
     ChangeAdminPasswordDto,
-    CreateAdminDto,
     UpdateAdminDto
 } from '../dtos/AdminDto';
 import { AdminLoginInput, ChangeAdminPasswordInput, CreateAdminInput, UpdateAdminInput } from '../../application/interfaces/AdminInterfaces';
@@ -17,18 +18,21 @@ import { GetAdminByIdUseCase } from '../../application/use-cases/adminUseCases/G
 import { UpdateAdminUseCase } from '../../application/use-cases/adminUseCases/UpdateAdminUseCase';
 import { ChangeAdminPasswordUseCase } from '../../application/use-cases/adminUseCases/ChangeAdminPasswordUseCase';
 
-export const ADMIN_LOGIN_USE_CASE_TOKEN = 'ADMIN_LOGIN_USE_CASE_TOKEN'
-export const CREATE_ADMIN_USE_CASE_TOKEN = 'CREATE_ADMIN_USE_CASE_TOKEN'
-export const GET_ALL_ADMINS_USE_CASE_TOKEN = 'GET_ALL_ADMINS_USE_CASE_TOKEN'
-export const GET_ADMIN_BY_ID_USE_CASE_TOKEN = 'GET_ADMIN_BY_ID_USE_CASE_TOKEN'
-export const UPDATE_ADMIN_USE_CASE_TOKEN = 'UPDATE_ADMIN_USE_CASE_TOKEN'
-export const CHANGE_ADMIN_PASSWORD_USE_CASE_TOKEN = 'CHANGE_ADMIN_PASSWORD_USE_CASE_TOKEN'
+export const ADMIN_LOGIN_USE_CASE_TOKEN = 'ADMIN_LOGIN_USE_CASE_TOKEN';
+export const ADMIN_REGISTER_USE_CASE_TOKEN = 'ADMIN_REGISTER_USE_CASE_TOKEN';
+export const CREATE_ADMIN_USE_CASE_TOKEN = 'CREATE_ADMIN_USE_CASE_TOKEN';
+export const GET_ALL_ADMINS_USE_CASE_TOKEN = 'GET_ALL_ADMINS_USE_CASE_TOKEN';
+export const GET_ADMIN_BY_ID_USE_CASE_TOKEN = 'GET_ADMIN_BY_ID_USE_CASE_TOKEN';
+export const UPDATE_ADMIN_USE_CASE_TOKEN = 'UPDATE_ADMIN_USE_CASE_TOKEN';
+export const CHANGE_ADMIN_PASSWORD_USE_CASE_TOKEN = 'CHANGE_ADMIN_PASSWORD_USE_CASE_TOKEN';
 
 @Controller('api/admin')
 export class AdminController {
     constructor(
         @Inject(ADMIN_LOGIN_USE_CASE_TOKEN)
         private readonly adminLoginUseCase: AdminLoginUseCase,
+        @Inject(ADMIN_REGISTER_USE_CASE_TOKEN)
+        private readonly adminRegisterUseCase: AdminRegisterUseCase,
         @Inject(CREATE_ADMIN_USE_CASE_TOKEN)
         private readonly createAdminUseCase: CreateAdminUseCase,
         @Inject(GET_ALL_ADMINS_USE_CASE_TOKEN)
@@ -88,12 +92,45 @@ export class AdminController {
         }
     }
 
-    //Crear Admins
+    @Post('register')
+    async register(@Body() registerDto: CreateAdminDto, @Res() response: Response): Promise<void> {
+        try {
+            // Convert DTO to Application Input
+            const input: CreateAdminInput = {
+                tenantUuid: this.tenantContext.getTenantUuid(), // Always use tenant from context
+                email: registerDto.email,
+                password: registerDto.password,
+                name: registerDto.name,
+            };
 
+            const adminResult = await this.adminRegisterUseCase.execute(input);
+
+            response.status(201).json({
+                status: 'success',
+                data: adminResult,
+                message: 'Administrator registered successfully'
+            });
+        } catch (error) {
+            const statusCode = error.message.includes('already registered')
+                ? HttpStatus.CONFLICT
+                : HttpStatus.BAD_REQUEST;
+
+            throw new HttpException(
+                {
+                    status: 'error',
+                    message: 'Registration failed',
+                    error: error.message
+                },
+                statusCode
+            );
+        }
+    }
+
+    // Crear Admins
     @Post()
     async create(@Body() createDto: CreateAdminDto): Promise<ApiResponse<any>> {
         try {
-            const tenantUuid = this.tenantContext.requireTenant().id
+            const tenantUuid = this.tenantContext.requireTenant().id;
             const input: CreateAdminInput = {
                 tenantUuid: tenantUuid,
                 email: createDto.email,
@@ -120,12 +157,11 @@ export class AdminController {
         }
     }
 
-    //Obtener todos los Admins
-
+    // Obtener todos los Admins
     @Get()
     async getAll(): Promise<ApiResponse<any[]>> {
         try {
-            const admins = await this.getAllAdminUseCase.execute()
+            const admins = await this.getAllAdminUseCase.execute();
 
             return {
                 status: 'success',
@@ -144,29 +180,26 @@ export class AdminController {
         }
     }
 
-
-    //Obtener Admin por id
-
+    // Obtener Admin por id
     @Get(':id')
     async getById(@Param('id') id: string): Promise<ApiResponse<any>> {
         try {
-            const admin = await this.getAdminByIdUseCase.execute(id)
+            const admin = await this.getAdminByIdUseCase.execute(id);
 
             return {
                 status: 'success',
                 data: admin,
-                message: 'Administrators retrieved successfully'
+                message: 'Administrator retrieved successfully'
             };
         } catch (error) {
             const statusCode = error.message === 'Administrator not found'
-
                 ? HttpStatus.NOT_FOUND
                 : HttpStatus.BAD_REQUEST;
 
             throw new HttpException(
                 {
                     status: 'error',
-                    message: 'Failed to retrieve administrators',
+                    message: 'Failed to retrieve administrator',
                     error: error.message
                 },
                 statusCode
@@ -281,7 +314,7 @@ export class AdminController {
 
     // Endpoint para logout (invalidar token)
     @Post('logout')
-    async logout(@Body() body: { token: string }): Promise<ApiResponse<null>> {
+    async logout(): Promise<ApiResponse<null>> {
         try {
             // TODO: Implementar invalidación de token en producción
             // Por ahora, simplemente retornamos éxito

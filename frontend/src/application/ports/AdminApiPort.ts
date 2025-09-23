@@ -4,6 +4,13 @@ export interface AdminLoginInput {
   password: string;
 }
 
+export interface CreateAdminInput {
+  tenantUuid?: string;
+  email: string;
+  password: string;
+  name: string;
+}
+
 export interface AdminOutput {
   id: string;
   tenantUuid: string;
@@ -50,6 +57,7 @@ export interface ApiResponse<T> {
  */
 export interface AdminApiAdapter {
   login(credentials: AdminLoginInput, tenantId: string): Promise<AdminLoginOutput>;
+  register(adminData: CreateAdminInput): Promise<AdminOutput>;
   logout(): Promise<void>;
   validateToken(): Promise<AdminOutput>;
   getProfile(): Promise<AdminOutput>;

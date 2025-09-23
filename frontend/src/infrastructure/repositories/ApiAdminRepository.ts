@@ -3,11 +3,12 @@ import { AdminApiAdapter as IAdminApiAdapter } from '../../application/ports/Adm
 import { TokenStorage } from '../storage/TokenStorage';
 import { TokenManager, ITokenManager } from '../services/TokenManager';
 import { IHttpClient } from '../http/HttpClient';
-import { 
-  AdminLoginInput, 
-  AdminLoginOutput, 
-  AdminOutput, 
-  TokenResponse 
+import {
+  AdminLoginInput,
+  AdminLoginOutput,
+  AdminOutput,
+  CreateAdminInput,
+  TokenResponse
 } from '../../application/ports/AdminApiPort';
 
 // Implementación del repositorio de Admin que integra Dual Token
@@ -24,13 +25,13 @@ export class ApiAdminRepository implements AdminRepository {
   ) {
     // Inicializar TokenManager
     this.tokenManager = new TokenManager(tokenStorage);
-    
+
     // Configurar callback de refresh en TokenManager
     this.setupTokenRefresh();
-    
+
     // Configurar interceptor HTTP para refresh automático
     this.setupHttpInterceptor();
-    
+
     // Restaurar token en HttpClient si existe
     this.restoreAuthToken();
   }
@@ -41,25 +42,25 @@ export class ApiAdminRepository implements AdminRepository {
   async login(credentials: AdminLoginInput, tenantId: string): Promise<AdminLoginOutput> {
     try {
       const result = await this.apiAdapter.login(credentials, tenantId);
-      
+
       // Configurar tokens en TokenManager
       this.tokenManager.setTokens(result.authentication);
-      
+
       // Configurar información de sesión
       if (result.session) {
         this.tokenStorage.setSessionInfo(result.session.session_id, result.session.login_time);
       }
-      
+
       // Configurar token en HttpClient para peticiones futuras
       this.httpClient.setAuthToken(result.authentication.access_token);
-      
+
       console.log('Login successful with dual token system', {
         adminId: result.admin.id,
         hasAccessToken: !!result.authentication.access_token,
         hasRefreshToken: !!result.authentication.refresh_token,
         expiresAt: result.authentication.expires_at
       });
-      
+
       return result;
     } catch (error: any) {
       console.error('Login failed:', error.message);
@@ -85,7 +86,7 @@ export class ApiAdminRepository implements AdminRepository {
     try {
       // Obtener token válido (renovará automáticamente si es necesario)
       const validToken = await this.tokenManager.getValidAccessToken();
-      
+
       if (!validToken) {
         throw new Error('No valid authentication token');
       }
@@ -94,7 +95,7 @@ export class ApiAdminRepository implements AdminRepository {
       return await this.apiAdapter.validateToken();
     } catch (error: any) {
       console.error('Token validation failed:', error.message);
-      
+
       // Si falla la validación, limpiar tokens
       if (error.message.includes('Token expired') || error.message.includes('invalid')) {
         this.clearAllAuthData();
@@ -108,7 +109,7 @@ export class ApiAdminRepository implements AdminRepository {
     try {
       // Obtener token válido (renovará automáticamente si es necesario)
       const validToken = await this.tokenManager.getValidAccessToken();
-      
+
       if (!validToken) {
         throw new Error('Not authenticated');
       }
@@ -116,11 +117,29 @@ export class ApiAdminRepository implements AdminRepository {
       return await this.apiAdapter.getProfile();
     } catch (error: any) {
       console.error('Get profile failed:', error.message);
-      
+
       if (error.message.includes('Unauthorized')) {
         this.clearAllAuthData();
       }
       throw error;
+    }
+  }
+
+  // Registra un nuevo administrador
+  async register(adminData: CreateAdminInput): Promise<AdminOutput> {
+    try {
+      const result = await this.apiAdapter.register(adminData);
+
+      console.log('Registration successful', {
+        adminId: result.id,
+        email: result.email,
+        tenantUuid: result.tenantUuid
+      });
+
+      return result;
+    } catch (error: any) {
+      console.error('Registration failed:', error.message);
+      throw new Error(`Registration failed: ${error.message}`);
     }
   }
 
@@ -171,10 +190,10 @@ export class ApiAdminRepository implements AdminRepository {
       try {
         console.log('ApiAdminRepository: Executing token refresh...');
         const newTokenResponse = await this.apiAdapter.refreshToken(refreshToken);
-        
+
         // Actualizar token en HttpClient
         this.httpClient.setAuthToken(newTokenResponse.access_token);
-        
+
         console.log('ApiAdminRepository: Token refresh completed successfully');
         return newTokenResponse;
       } catch (error: any) {
@@ -190,7 +209,7 @@ export class ApiAdminRepository implements AdminRepository {
       try {
         console.log('HTTP Interceptor: Attempting token refresh...');
         const validToken = await this.tokenManager.getValidAccessToken();
-        
+
         if (validToken) {
           console.log('HTTP Interceptor: Token refresh successful');
           return validToken;
