@@ -1,18 +1,30 @@
-import { Controller, Post, Body, HttpStatus, HttpException, Inject, Res } from '@nestjs/common';
+import { Controller, Post, Body, Get, HttpStatus, HttpException, Inject, Res, Param, Put } from '@nestjs/common';
 import { Response } from 'express';
 import { AdminLoginUseCase } from '../../application/use-cases/adminUseCases/AdminLoginUseCase';
 import { AdminRegisterUseCase } from '../../application/use-cases/adminUseCases/AdminRegisterUseCase';
 import {
     AdminLoginDto,
     CreateAdminDto,
-    ApiResponse
+    ApiResponse,
+    ChangeAdminPasswordDto,
+    UpdateAdminDto
 } from '../dtos/AdminDto';
-import { AdminLoginInput, CreateAdminInput } from '../../application/interfaces/AdminInterfaces';
+import { AdminLoginInput, ChangeAdminPasswordInput, CreateAdminInput, UpdateAdminInput } from '../../application/interfaces/AdminInterfaces';
 import { TenantContext } from '../../infrastructure/context/TenantContext';
 import { validateSimpleToken } from '../../shared/utils/crypto-utils';
+import { CreateAdminUseCase } from '../../application/use-cases/adminUseCases/CreateAdminUseCase';
+import { GetAllAdminsUseCase } from '../../application/use-cases/adminUseCases/GetAllAdminUseCase';
+import { GetAdminByIdUseCase } from '../../application/use-cases/adminUseCases/GetAdminByIdUseCase';
+import { UpdateAdminUseCase } from '../../application/use-cases/adminUseCases/UpdateAdminUseCase';
+import { ChangeAdminPasswordUseCase } from '../../application/use-cases/adminUseCases/ChangeAdminPasswordUseCase';
 
 export const ADMIN_LOGIN_USE_CASE_TOKEN = 'ADMIN_LOGIN_USE_CASE_TOKEN';
 export const ADMIN_REGISTER_USE_CASE_TOKEN = 'ADMIN_REGISTER_USE_CASE_TOKEN';
+export const CREATE_ADMIN_USE_CASE_TOKEN = 'CREATE_ADMIN_USE_CASE_TOKEN';
+export const GET_ALL_ADMINS_USE_CASE_TOKEN = 'GET_ALL_ADMINS_USE_CASE_TOKEN';
+export const GET_ADMIN_BY_ID_USE_CASE_TOKEN = 'GET_ADMIN_BY_ID_USE_CASE_TOKEN';
+export const UPDATE_ADMIN_USE_CASE_TOKEN = 'UPDATE_ADMIN_USE_CASE_TOKEN';
+export const CHANGE_ADMIN_PASSWORD_USE_CASE_TOKEN = 'CHANGE_ADMIN_PASSWORD_USE_CASE_TOKEN';
 
 @Controller('api/admin')
 export class AdminController {
@@ -21,6 +33,16 @@ export class AdminController {
         private readonly adminLoginUseCase: AdminLoginUseCase,
         @Inject(ADMIN_REGISTER_USE_CASE_TOKEN)
         private readonly adminRegisterUseCase: AdminRegisterUseCase,
+        @Inject(CREATE_ADMIN_USE_CASE_TOKEN)
+        private readonly createAdminUseCase: CreateAdminUseCase,
+        @Inject(GET_ALL_ADMINS_USE_CASE_TOKEN)
+        private readonly getAllAdminUseCase: GetAllAdminsUseCase,
+        @Inject(GET_ADMIN_BY_ID_USE_CASE_TOKEN)
+        private readonly getAdminByIdUseCase: GetAdminByIdUseCase,
+        @Inject(UPDATE_ADMIN_USE_CASE_TOKEN)
+        private readonly updateAdminUseCase: UpdateAdminUseCase,
+        @Inject(CHANGE_ADMIN_PASSWORD_USE_CASE_TOKEN)
+        private readonly changeAdminPasswordUseCase: ChangeAdminPasswordUseCase,
         private readonly tenantContext: TenantContext
     ) { }
 
@@ -97,6 +119,149 @@ export class AdminController {
                 {
                     status: 'error',
                     message: 'Registration failed',
+                    error: error.message
+                },
+                statusCode
+            );
+        }
+    }
+
+    // Crear Admins
+    @Post()
+    async create(@Body() createDto: CreateAdminDto): Promise<ApiResponse<any>> {
+        try {
+            const tenantUuid = this.tenantContext.requireTenant().id;
+            const input: CreateAdminInput = {
+                tenantUuid: tenantUuid,
+                email: createDto.email,
+                password: createDto.password,
+                name: createDto.name,
+            };
+
+            const admin = await this.createAdminUseCase.execute(input);
+
+            return {
+                status: 'success',
+                data: admin,
+                message: 'Administrator created successfully'
+            };
+        } catch (error) {
+            throw new HttpException(
+                {
+                    status: 'error',
+                    message: 'Failed to create administrator',
+                    error: error.message
+                },
+                HttpStatus.BAD_REQUEST
+            );
+        }
+    }
+
+    // Obtener todos los Admins
+    @Get()
+    async getAll(): Promise<ApiResponse<any[]>> {
+        try {
+            const admins = await this.getAllAdminUseCase.execute();
+
+            return {
+                status: 'success',
+                data: admins,
+                message: 'Administrators retrieved successfully'
+            };
+        } catch (error) {
+            throw new HttpException(
+                {
+                    status: 'error',
+                    message: 'Failed to retrieve administrators',
+                    error: error.message
+                },
+                HttpStatus.BAD_REQUEST
+            );
+        }
+    }
+
+    // Obtener Admin por id
+    @Get(':id')
+    async getById(@Param('id') id: string): Promise<ApiResponse<any>> {
+        try {
+            const admin = await this.getAdminByIdUseCase.execute(id);
+
+            return {
+                status: 'success',
+                data: admin,
+                message: 'Administrator retrieved successfully'
+            };
+        } catch (error) {
+            const statusCode = error.message === 'Administrator not found'
+                ? HttpStatus.NOT_FOUND
+                : HttpStatus.BAD_REQUEST;
+
+            throw new HttpException(
+                {
+                    status: 'error',
+                    message: 'Failed to retrieve administrator',
+                    error: error.message
+                },
+                statusCode
+            );
+        }
+    }
+
+    @Put(':id')
+    async update(@Param('id') id: string, @Body() updateDto: UpdateAdminDto): Promise<ApiResponse<any>> {
+        try {
+            const input: UpdateAdminInput = {
+                email: updateDto.email,
+                name: updateDto.name,
+            };
+
+            const admin = await this.updateAdminUseCase.execute(id, input);
+
+            return {
+                status: 'success',
+                data: admin,
+                message: 'Administrator updated successfully'
+            };
+        } catch (error) {
+            const statusCode = error.message === 'Administrator not found'
+                ? HttpStatus.NOT_FOUND
+                : HttpStatus.BAD_REQUEST;
+
+            throw new HttpException(
+                {
+                    status: 'error',
+                    message: 'Failed to update administrator',
+                    error: error.message
+                },
+                statusCode
+            );
+        }
+    }
+
+    @Put(':id/change-password')
+    async changePassword(@Param('id') id: string, @Body() changePasswordDto: ChangeAdminPasswordDto): Promise<ApiResponse<null>> {
+        try {
+            const input: ChangeAdminPasswordInput = {
+                currentPassword: changePasswordDto.currentPassword,
+                newPassword: changePasswordDto.newPassword,
+            };
+
+            await this.changeAdminPasswordUseCase.execute(id, input);
+
+            return {
+                status: 'success',
+                data: null,
+                message: 'Password changed successfully'
+            };
+        } catch (error) {
+            const statusCode = error.message === 'Administrator not found'
+                ? HttpStatus.NOT_FOUND
+                : HttpStatus.BAD_REQUEST;
+
+            throw new HttpException(
+                {
+                    status: 'error',
+                    message: 'Failed to change password',
                     error: error.message
                 },
                 statusCode
