@@ -1,6 +1,6 @@
 import { TenantContext } from '@/infrastructure/context/TenantContext';
-import { UserRepository } from '@/core/domain/repositories/UserRepository';
-import { UpdateUserInput, UserOutput } from '../../interfaces/UserInterfaces';
+import { UserRepository } from '../../core/domain/repositories/UserRepository';
+import { UpdateUserInput, UserOutput } from '../interfaces/UserInterfaces';
 
 export class UpdateUserUseCase {
     constructor(

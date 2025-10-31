@@ -18,6 +18,10 @@ export class AdminLoginDto {
 }
 
 export class CreateAdminDto {
+    @IsUUID(4, { message: 'TenantUuid must be a valid UUID' })
+    @IsNotEmpty({ message: 'TenantUuid is required' })
+    tenantUuid: string;
+
     @IsEmail({}, { message: 'Email must be a valid email address' })
     @IsNotEmpty({ message: 'Email is required' })
     email: string;

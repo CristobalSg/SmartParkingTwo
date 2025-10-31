@@ -21,7 +21,6 @@ export interface AdminRepository {
 
     // Operaciones de autenticación
     findByEmailForAuth: (email: string, tenantId: string) => Promise<Admin | null>; // Incluye passwordHash para autenticación
-    findByIdForAuth: (id: string, tenantId: string) => Promise<Admin | null>; // Incluye passwordHash para autenticación
 
     // Operaciones para super admin (gestión de tenants)
     findAllAcrossTenants?: () => Promise<Admin[]>; // Opcional: Solo para super admin
