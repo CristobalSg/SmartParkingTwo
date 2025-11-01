@@ -7,7 +7,7 @@ import {
 } from '../dtos/AdminDto';
 import { AdminLoginInput } from '../../application/interfaces/AdminInterfaces';
 import { TenantContext } from '../../infrastructure/context/TenantContext';
-import { validateSimpleToken } from '../../shared/utils/crypto-utils';
+import { AuthService } from '../../infrastructure/auth/auth.service';
 
 export const ADMIN_LOGIN_USE_CASE_TOKEN = 'ADMIN_LOGIN_USE_CASE_TOKEN';
 
@@ -16,12 +16,12 @@ export class AdminController {
     constructor(
         @Inject(ADMIN_LOGIN_USE_CASE_TOKEN)
         private readonly adminLoginUseCase: AdminLoginUseCase,
-        private readonly tenantContext: TenantContext
+        private readonly tenantContext: TenantContext,
+        private readonly authService: AuthService
     ) { }
 
     @Post('login')
     async login(@Body() loginDto: AdminLoginDto, @Res() response: Response): Promise<void> {
-        console.log('AdminController.login called with:', JSON.stringify(loginDto, null, 2));
         try {
             // Convert DTO to Application Input
             const input: AdminLoginInput = {
@@ -29,12 +29,8 @@ export class AdminController {
                 password: loginDto.password,
                 tenantUuid: loginDto.tenantUuid || this.tenantContext.getTenantUuid(),
             };
-            console.log('Input to AdminLoginUseCase:', JSON.stringify(input, null, 2));
 
             const authResult = await this.adminLoginUseCase.execute(input);
-
-            // Debug temporal - ver qué estructura se está devolviendo
-            console.log('AuthResult structure:', JSON.stringify(authResult, null, 2));
 
             // Headers de seguridad
             response.setHeader('Cache-Control', 'no-store');
@@ -48,7 +44,7 @@ export class AdminController {
 
             response.status(200).json({
                 status: 'success',
-                data: authResult, // Devolver toda la estructura nueva con authentication y session
+                data: authResult,
                 message: 'Login successful'
             });
         } catch (error) {
@@ -68,15 +64,13 @@ export class AdminController {
         }
     }
 
-    // Endpoint para validar token (opcional)
+    // Endpoint para validar token JWT
     @Post('validate-token')
     async validateToken(@Body() body: { token: string }): Promise<ApiResponse<{ valid: boolean; admin?: any }>> {
         try {
-            // TODO: Implementar validación de token JWT
-            // Por ahora, validación simple de token base64
-            const isValid = this.validateSimpleToken(body.token);
+            const tokenData = await this.authService.verifyToken(body.token);
 
-            if (!isValid) {
+            if (!tokenData) {
                 return {
                     status: 'success',
                     data: { valid: false },
@@ -84,15 +78,12 @@ export class AdminController {
                 };
             }
 
-            // Decodificar información básica del token
-            const tokenData = this.decodeSimpleToken(body.token);
-
             return {
                 status: 'success',
                 data: {
                     valid: true,
                     admin: {
-                        id: tokenData.adminId,
+                        id: tokenData.sub,
                         tenantId: tokenData.tenantId,
                         email: tokenData.email
                     }
@@ -113,13 +104,9 @@ export class AdminController {
 
     // Endpoint para logout (invalidar token)
     @Post('logout')
-    async logout(@Body() body: { token: string }): Promise<ApiResponse<null>> {
+    async logout(): Promise<ApiResponse<null>> {
         try {
-            // TODO: Implementar invalidación de token en producción
-            // Por ahora, simplemente retornamos éxito
-            // En el futuro, body.token se usará para invalidar el token específico
-            console.log('Logout request for token:', body.token ? 'provided' : 'missing');
-
+            // TODO: Implementar invalidación de token en producción (blacklist de tokens)
             return {
                 status: 'success',
                 data: null,
@@ -137,17 +124,53 @@ export class AdminController {
         }
     }
 
-    // Métodos privados para validación de token usando nuestra utilidad
-    private validateSimpleToken(token: string): boolean {
-        const tokenData = validateSimpleToken(token);
-        return tokenData !== null;
-    }
+    // Endpoint para renovar access token usando refresh token
+    @Post('refresh-token')
+    async refreshToken(@Body() body: { refresh_token: string }): Promise<ApiResponse<{ access_token: string; token_type: string; expires_in: number; expires_at: string }>> {
+        try {
+            const tokenData = await this.authService.verifyToken(body.refresh_token);
 
-    private decodeSimpleToken(token: string): any {
-        const tokenData = validateSimpleToken(token);
-        if (!tokenData) {
-            throw new Error('Invalid token format');
+            if (!tokenData) {
+                throw new HttpException(
+                    {
+                        status: 'error',
+                        message: 'Invalid refresh token',
+                        error: 'Token is not valid'
+                    },
+                    HttpStatus.UNAUTHORIZED
+                );
+            }
+
+            // Generar nuevo access token (preservando el tipo original)
+            const newAccessToken = this.authService.generateAccessToken({
+                sub: tokenData.sub,
+                email: tokenData.email,
+                tenantId: tokenData.tenantId,
+                type: tokenData.type
+            });
+
+            const expiresIn = 3600; // 1 hora
+            const expiresAt = new Date(Date.now() + expiresIn * 1000);
+
+            return {
+                status: 'success',
+                data: {
+                    access_token: newAccessToken,
+                    token_type: 'Bearer',
+                    expires_in: expiresIn,
+                    expires_at: expiresAt.toISOString()
+                },
+                message: 'Token refreshed successfully'
+            };
+        } catch (error) {
+            throw new HttpException(
+                {
+                    status: 'error',
+                    message: 'Token refresh failed',
+                    error: error.message
+                },
+                HttpStatus.UNAUTHORIZED
+            );
         }
-        return tokenData;
     }
 }

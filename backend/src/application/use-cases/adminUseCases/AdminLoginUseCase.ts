@@ -2,12 +2,13 @@ import { AdminRepository } from '../../../core/domain/repositories/AdminReposito
 import { Admin } from '../../../core/domain/entities/Admin';
 import { AdminLoginInput, AdminAuthOutput, AdminOutput } from '../../interfaces/AdminInterfaces';
 import { TenantContext } from '../../../infrastructure/context/TenantContext';
-import { generateSecureId, generateSimpleToken, generateRefreshToken } from '../../../shared/utils/crypto-utils';
+import { AuthService } from '../../../infrastructure/auth/auth.service';
 
 export class AdminLoginUseCase {
     constructor(
         private readonly adminRepository: AdminRepository,
-        private readonly tenantContext: TenantContext
+        private readonly tenantContext: TenantContext,
+        private readonly authService: AuthService
     ) { }
 
     async execute(input: AdminLoginInput): Promise<AdminAuthOutput> {
@@ -33,8 +34,8 @@ export class AdminLoginUseCase {
             throw new Error('Invalid email or password');
         }
 
-        // Verificar la contraseña
-        const isPasswordValid = admin.verifyPassword(input.password);
+        // Verificar la contraseña (ahora es async)
+        const isPasswordValid = await admin.verifyPassword(input.password);
 
         if (!isPasswordValid) {
             throw new Error('Invalid email or password');
@@ -73,16 +74,26 @@ export class AdminLoginUseCase {
     }
 
     private async generateAuthResponse(admin: Admin): Promise<AdminAuthOutput> {
-        const expiresInSeconds = 24 * 60 * 60; // 24 horas
+        const expiresInSeconds = 60 * 60; // 1 hora
         const expiresAt = new Date(Date.now() + (expiresInSeconds * 1000));
 
-        // Generar tokens mejorados
-        const accessToken = this.generateSimpleToken(admin);
-        const refreshToken = generateRefreshToken({
-            adminId: admin.id,
+        // Generar JWT tokens usando AuthService
+        const accessToken = this.authService.generateAccessToken({
+            sub: admin.id,
+            email: admin.email,
             tenantId: admin.tenantId,
-            email: admin.email
+            type: 'admin'
         });
+
+        const refreshToken = this.authService.generateRefreshToken({
+            sub: admin.id,
+            email: admin.email,
+            tenantId: admin.tenantId,
+            type: 'admin'
+        });
+
+        // Generar un session ID simple
+        const sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
         return {
             admin: this.mapToAdminOutput(admin),
@@ -95,7 +106,7 @@ export class AdminLoginUseCase {
                 refresh_token: refreshToken
             },
             session: {
-                session_id: generateSecureId(),
+                session_id: sessionId,
                 login_time: new Date().toISOString(),
                 // ip_address se puede capturar del request
             }
@@ -109,22 +120,7 @@ export class AdminLoginUseCase {
         return `${baseScope} ${tenantScope}`;
     }
 
-    private generateSimpleToken(admin: Admin): string {
-        // Usar la nueva utilidad crypto para generar tokens
-        const payload = {
-            sub: admin.id,
-            tenantId: admin.tenantId,
-            email: admin.email,
-            role: "admin",
-            permission: ["read", "write", "admin"],
-            iat: Math.floor(Date.now() / 1000),
-            exp: Math.floor(Date.now() / 1000) + 86400,
-            jti: generateSecureId(),
-            scope: "admin:full"
-        };
-
-        return generateSimpleToken(payload);
-    } private mapToAdminOutput(admin: Admin): AdminOutput {
+    private mapToAdminOutput(admin: Admin): AdminOutput {
         return {
             id: admin.id,
             tenantUuid: admin.tenantId,
