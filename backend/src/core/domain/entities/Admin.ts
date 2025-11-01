@@ -1,5 +1,5 @@
 import { TenantId } from '../value-objects/TenantId';
-import { hashPassword, verifyPassword } from '../../../shared/utils/crypto-utils';
+import * as bcrypt from 'bcrypt';
 
 export class Admin {
     constructor(
@@ -48,10 +48,8 @@ export class Admin {
         if (!passwordHash || passwordHash.trim().length === 0) {
             throw new Error('Password hash cannot be empty');
         }
-        // Validar que tiene el formato salt:hash (de nuestra utilidad crypto)
-        if (!passwordHash.includes(':') || passwordHash.split(':').length !== 2) {
-            throw new Error('Password hash must have the format salt:hash');
-        }
+        // Bcrypt hashes start with $2a$, $2b$, or $2y$ and have a specific length
+        // Just validate it's not empty, bcrypt will handle validation when comparing
     }
 
     // Verificar si el administrador pertenece a un tenant específico
@@ -103,17 +101,17 @@ export class Admin {
         );
     }
 
-    // Verificar si una contraseña coincide con el hash almacenado
-    verifyPassword(plainPassword: string): boolean {
+    // Verificar si una contraseña coincide con el hash almacenado (async ahora con bcrypt)
+    async verifyPassword(plainPassword: string): Promise<boolean> {
         try {
-            return verifyPassword(plainPassword, this.passwordHash);
+            return await bcrypt.compare(plainPassword, this.passwordHash);
         } catch (error) {
             return false;
         }
     }
 
-    // Método estático para crear un hash de contraseña
-    static hashPassword(plainPassword: string): string {
+    // Método estático para crear un hash de contraseña (async ahora con bcrypt)
+    static async hashPassword(plainPassword: string): Promise<string> {
         if (!plainPassword || plainPassword.length < 8) {
             throw new Error('Password must be at least 8 characters long');
         }
@@ -128,16 +126,18 @@ export class Admin {
             throw new Error('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character');
         }
 
-        return hashPassword(plainPassword);
-    }    // Método estático para crear un nuevo administrador
-    static create(
+        return await bcrypt.hash(plainPassword, 12);
+    }
+
+    // Método estático para crear un nuevo administrador (async ahora)
+    static async create(
         id: string,
         tenantId: string,
         email: string,
         plainPassword: string,
         name: string
-    ): Admin {
-        const passwordHash = Admin.hashPassword(plainPassword);
+    ): Promise<Admin> {
+        const passwordHash = await Admin.hashPassword(plainPassword);
         const now = new Date();
 
         return new Admin(
