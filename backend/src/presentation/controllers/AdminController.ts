@@ -1,8 +1,10 @@
 import { Controller, Post, Body, HttpStatus, HttpException, Inject, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { AdminLoginUseCase } from '../../application/use-cases/adminUseCases/AdminLoginUseCase';
+import { AdminRegisterUseCase } from '../../application/use-cases/adminUseCases/AdminRegisterUseCase';
 import {
     AdminLoginDto,
+    AdminRegisterDto,
     ApiResponse
 } from '../dtos/AdminDto';
 import { AdminLoginInput } from '../../application/interfaces/AdminInterfaces';
@@ -10,15 +12,49 @@ import { TenantContext } from '../../infrastructure/context/TenantContext';
 import { AuthService } from '../../infrastructure/auth/auth.service';
 
 export const ADMIN_LOGIN_USE_CASE_TOKEN = 'ADMIN_LOGIN_USE_CASE_TOKEN';
+export const ADMIN_REGISTER_USE_CASE_TOKEN = 'ADMIN_REGISTER_USE_CASE_TOKEN';
 
 @Controller('api/admin')
 export class AdminController {
     constructor(
         @Inject(ADMIN_LOGIN_USE_CASE_TOKEN)
         private readonly adminLoginUseCase: AdminLoginUseCase,
+        @Inject(ADMIN_REGISTER_USE_CASE_TOKEN)
+        private readonly adminRegisterUseCase: AdminRegisterUseCase,
         private readonly tenantContext: TenantContext,
         private readonly authService: AuthService
     ) { }
+
+    @Post('register')
+    async register(@Body() registerDto: AdminRegisterDto, @Res() response: Response): Promise<void> {
+        try {
+            const input = {
+                email: registerDto.email,
+                password: registerDto.password,
+                name: registerDto.name,
+                tenantUuid: registerDto.tenantUuid || this.tenantContext.getTenantUuid(),
+            };
+
+            // Aquí necesitas crear un AdminRegisterUseCase
+            const result = await this.adminRegisterUseCase.execute(input);
+
+            response.status(201).json({
+                status: 'success',
+                data: result,
+                message: 'Admin registered successfully'
+            });
+        } catch (error) {
+            console.error('Registration error:', error);
+            throw new HttpException(
+                {
+                    status: 'error',
+                    message: error.message || 'Registration failed',
+                    error: error.message
+                },
+                HttpStatus.BAD_REQUEST
+            );
+        }
+    }
 
     @Post('login')
     async login(@Body() loginDto: AdminLoginDto, @Res() response: Response): Promise<void> {
